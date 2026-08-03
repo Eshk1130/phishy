@@ -19,6 +19,9 @@ def analyze_email(email_text):
 
     score = 0
     reasons = []
+    email_text = email_text.lower()
+    for keyword in indicators:
+        print(keyword)
 
     return {
         "score": score,
