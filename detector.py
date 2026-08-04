@@ -20,10 +20,24 @@ def analyze_email(email_text):
     score = 0
     reasons = []
     email_text = email_text.lower()
-    for keyword in indicators:
-        print(keyword)
+    for keyword, indicator in indicators.items():
+        if keyword in email_text:
+            score += indicators[keyword]["weight"]
+            reasons.append(indicators[keyword]["reason"])
 
+    max_score = sum(indicator["weight"] for indicator in indicators.values())
+    risk_percentage = (score / max_score) * 100
+    if risk_percentage < 30:
+        risk_level = "Low"
+    elif risk_percentage < 70:
+        risk_level = "Medium"
+    else:
+        risk_level = "High"
+    
     return {
         "score": score,
-        "reasons": reasons
+        "reasons": reasons,
+        "max_score": max_score,
+        "risk_percentage": risk_percentage,
+        "risk_level": risk_level
     }
