@@ -1,3 +1,4 @@
+import re
 def analyze_email(email_text):
 
 #the dictionary containing scores and reasons 
@@ -83,8 +84,13 @@ def analyze_email(email_text):
     reasons = []
     max_score = 0
 
-#converting to lowercase to avoid duplicacy problems
+#converting to lowercase to avoid duplicacy problems+ url detection
     email_text = email_text.lower()
+    urls = re.findall(r'https?://\S+', email_text)
+    if len(urls) > 0:
+     score += 2
+     reasons.append("URL detected in email")
+
 
 #traversing dict and adding scores and reasons 
     for keyword, indicator in indicators.items():
