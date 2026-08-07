@@ -1,19 +1,16 @@
 from detector import analyze_email
 
 email_text = """
-
 URGENT!
 
-We detected suspicious activity on your account.
-
 Your account has been suspended.
-
-Please verify your identity within 24 hours.
+Reset your password within 24 hours.
+Verify your identity immediately.
 
 Click here:
-https://google.com/login
+http://192.168.1.10/login
 
-to reset your password.
+We detected suspicious activity.
 """
 
 result = analyze_email(email_text)

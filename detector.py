@@ -90,6 +90,11 @@ def analyze_email(email_text):
     "weight": 2,
     "reason": "URL detected in email"
 },
+   "raw_ip_url": {
+    "keywords": [],
+    "weight": 3,
+    "reason": "Raw IP address detected in URL"
+},
 }
 
 
@@ -107,6 +112,12 @@ def analyze_email(email_text):
     if len(urls) > 0:
      score += indicators["url_detection"]["weight"]
      reasons.append(indicators["url_detection"]["reason"])
+
+    for url in urls:
+       if re.search(r'\d+\.\d+\.\d+\.\d+', url):
+        score += indicators["raw_ip_url"]["weight"]
+        reasons.append(indicators["raw_ip_url"]["reason"])
+        break
 
 
 
