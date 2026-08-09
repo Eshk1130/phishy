@@ -15,7 +15,8 @@ https://verify-login-bank.xyz/reset
 
 We detected suspicious activity.
 """
-
-result = analyze_email(email_text)
+sender_email = "support@example.com"
+sender_name = "Example Support"
+result = analyze_email(email_text, sender_email, sender_name)
 
 print(result)

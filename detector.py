@@ -1,6 +1,6 @@
 import re
 
-def analyze_email(email_text):
+def analyze_email(email_text, sender_email, sender_name):
     # the dictionary containing scores and reasons
     indicators = {
         "urgency": {
