@@ -1,4 +1,7 @@
 from detector import analyze_email
+#test cases 
+sender_email = "support@amazon.com"
+sender_name = "Customer Support"
 
 email_text = """
 URGENT!
@@ -15,8 +18,6 @@ https://verify-login-bank.xyz/reset
 
 We detected suspicious activity.
 """
-sender_email = "randomuser@gmail.com"
-sender_name = "PayPal Support"
 result = analyze_email(email_text, sender_email, sender_name)
 
 print(result)

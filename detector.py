@@ -128,6 +128,16 @@ def analyze_email(email_text, sender_email, sender_name):
         "update",
         "account"
     ]
+#sender analysis- list of protected brands
+    protected_brands = [
+    "paypal",
+    "microsoft",
+    "google",
+    "amazon",
+    "netflix",
+    "apple",
+    "linkedin"
+]
 
     # vars
     score = 0
@@ -172,11 +182,14 @@ def analyze_email(email_text, sender_email, sender_name):
 
 #version 3.1- sender analysis
     sender_domain = sender_email.split("@")[1]
-    claimed_identity = sender_name.lower().split()[0]
+    sender_name_lower = sender_name.lower()
 
-    if claimed_identity not in sender_domain:
-       score += indicators["sender_mismatch"]["weight"]
-       reasons.append(indicators["sender_mismatch"]["reason"])
+    for brand in protected_brands:
+        if brand in sender_name_lower:
+            if brand not in sender_domain:
+               score += indicators["sender_mismatch"]["weight"]
+               reasons.append(indicators["sender_mismatch"]["reason"])
+            break
 
     # traversing dict and adding scores and reasons
     for category, indicator in indicators.items():
