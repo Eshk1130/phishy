@@ -15,8 +15,8 @@ https://verify-login-bank.xyz/reset
 
 We detected suspicious activity.
 """
-sender_email = "support@example.com"
-sender_name = "Example Support"
+sender_email = "randomuser@gmail.com"
+sender_name = "PayPal Support"
 result = analyze_email(email_text, sender_email, sender_name)
 
 print(result)

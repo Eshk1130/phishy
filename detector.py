@@ -104,6 +104,11 @@ def analyze_email(email_text, sender_email, sender_name):
             "weight": 3,
             "reason": "Suspicious domain detected"
         },
+        "sender_mismatch": {
+          "keywords": [],
+          "weight": 3,
+          "reason": "Sender identity and email domain do not match"
+        },
     }
 
     # list 1 for suspicious tlds
@@ -148,6 +153,7 @@ def analyze_email(email_text, sender_email, sender_name):
     if url_count >= 3:
         score += indicators["multiple_urls"]["weight"]
         reasons.append(indicators["multiple_urls"]["reason"])
+
 #loop to check for suspicious tlds and domains
     suspicious_domain_found = False
 
@@ -163,6 +169,14 @@ def analyze_email(email_text, sender_email, sender_name):
     if suspicious_domain_found:
           score += indicators["suspicious_domain"]["weight"]
           reasons.append(indicators["suspicious_domain"]["reason"])
+
+#version 3.1- sender analysis
+    sender_domain = sender_email.split("@")[1]
+    claimed_identity = sender_name.lower().split()[0]
+
+    if claimed_identity not in sender_domain:
+       score += indicators["sender_mismatch"]["weight"]
+       reasons.append(indicators["sender_mismatch"]["reason"])
 
     # traversing dict and adding scores and reasons
     for category, indicator in indicators.items():
