@@ -114,6 +114,11 @@ def analyze_email(email_text, sender_email, sender_name, attachments):
          "weight": 3,
          "reason": "Executable attachment detected"
         },
+        "double_extension_attachment": {
+          "keywords": [],
+          "weight": 3,
+    "reason": "Double extension attachment detected"
+},
     }
 
 # list 1 for suspicious tlds
@@ -222,7 +227,24 @@ def analyze_email(email_text, sender_email, sender_name, attachments):
       score += indicators["executable_attachment"]["weight"]
       reasons.append(indicators["executable_attachment"]["reason"])
 
-    # traversing dict and adding scores and reasons
+#version 3.2- double attachment detection
+    double_extension_found = False
+
+    for attachment in attachments:
+        parts = attachment.split(".")
+        if len(parts) >= 3:
+           if parts[-1] in ["exe", "scr", "bat", "cmd", "js"]:
+              double_extension_found = True
+              print("DOUBLE EXTENSION FOUND:", attachment)
+              break
+
+    if double_extension_found:
+       score += indicators["double_extension_attachment"]["weight"]
+       reasons.append(
+        indicators["double_extension_attachment"]["reason"]
+    )
+
+# traversing dict and adding scores and reasons
     for category, indicator in indicators.items():
         for keyword in indicator["keywords"]:
             if keyword in email_text:

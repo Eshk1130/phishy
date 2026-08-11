@@ -19,8 +19,7 @@ https://verify-login-bank.xyz/reset
 We detected suspicious activity.
 """
 attachments = [
-    "invoice.pdf",
-    "payment.exe"
+    "invoice.pdf.exe",
 ]
 result = analyze_email(
     email_text,
