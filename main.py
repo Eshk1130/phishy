@@ -15,6 +15,7 @@ http://192.168.1.10/login
 http://192.168.2.10/login
 http://192.168.3.10/login
 https://verify-login-bank.xyz/reset
+https://paypal-login-security.xyz
 
 We detected suspicious activity.
 """
@@ -28,4 +29,24 @@ result = analyze_email(
     attachments
 )
 
-print(result)
+print("\n PHISHY REPORT \n")
+
+print(f"Risk Level      : {result['risk_level']}")
+print(f"Risk Score      : {result['score']}/{result['max_score']}")
+print(f"Risk Percentage : {result['risk_percentage']:.2f}%")
+
+print("\nReasons:")
+
+for reason in result["reasons"]:
+    print(f"- {reason}")
+
+print("\nRecommendation:")
+
+if result["risk_level"] == "High":
+    print("Do NOT interact with this email.")
+elif result["risk_level"] == "Medium":
+    print("Proceed with caution and verify the sender.")
+else:
+    print("No major phishing indicators detected.")
+
+print("\n")

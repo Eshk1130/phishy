@@ -119,6 +119,11 @@ def analyze_email(email_text, sender_email, sender_name, attachments):
           "weight": 3,
     "reason": "Double extension attachment detected"
 },
+"brand_impersonation": {
+    "keywords": [],
+    "weight": 3,
+    "reason": "Possible brand impersonation detected in URL"
+},
     }
 
 # list 1 for suspicious tlds
@@ -148,6 +153,16 @@ def analyze_email(email_text, sender_email, sender_name, attachments):
     "apple",
     "linkedin"
 ]
+
+    brand_domains = {
+    "paypal": "paypal.com",
+    "google": "google.com",
+    "amazon": "amazon.com",
+    "microsoft": "microsoft.com",
+    "netflix": "netflix.com",
+    "apple": "apple.com",
+    "linkedin": "linkedin.com"
+}
 
     suspicious_extensions = [
     ".exe",
@@ -187,6 +202,18 @@ def analyze_email(email_text, sender_email, sender_name, attachments):
 
     for url in urls:
         domain = url.split("/")[2]
+        for brand in protected_brands:
+
+          if brand in domain:
+
+            if brand_domains[brand] not in domain:
+
+                score += indicators["brand_impersonation"]["weight"]
+                reasons.append(
+                indicators["brand_impersonation"]["reason"]
+            )
+
+            break
 
         if any(tld in domain for tld in suspicious_tlds):
            suspicious_domain_found = True
@@ -198,8 +225,7 @@ def analyze_email(email_text, sender_email, sender_name, attachments):
           score += indicators["suspicious_domain"]["weight"]
           reasons.append(indicators["suspicious_domain"]["reason"])
 
-#temp
-    print("ATTACHMENTS:", attachments)
+#temp print("ATTACHMENTS:", attachments)
 
 #version 3.1- sender analysis
     sender_domain = sender_email.split("@")[1]
@@ -216,11 +242,11 @@ def analyze_email(email_text, sender_email, sender_name, attachments):
 
     executable_attachment_found = False
     for attachment in attachments:
-         print("CHECKING:", attachment)
+        # print("CHECKING:", attachment)
 
          if any(attachment.endswith(ext) for ext in suspicious_extensions):
             executable_attachment_found = True
-            print("EXECUTABLE FOUND:", attachment)
+            #print("EXECUTABLE FOUND:", attachment)
             break
 
     if executable_attachment_found:
@@ -235,7 +261,7 @@ def analyze_email(email_text, sender_email, sender_name, attachments):
         if len(parts) >= 3:
            if parts[-1] in ["exe", "scr", "bat", "cmd", "js"]:
               double_extension_found = True
-              print("DOUBLE EXTENSION FOUND:", attachment)
+              #print("DOUBLE EXTENSION FOUND:", attachment)
               break
 
     if double_extension_found:
