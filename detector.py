@@ -1,6 +1,6 @@
 import re
 
-def analyze_email(email_text, sender_email, sender_name):
+def analyze_email(email_text, sender_email, sender_name, attachments):
     # the dictionary containing scores and reasons
     indicators = {
         "urgency": {
@@ -179,6 +179,9 @@ def analyze_email(email_text, sender_email, sender_name):
     if suspicious_domain_found:
           score += indicators["suspicious_domain"]["weight"]
           reasons.append(indicators["suspicious_domain"]["reason"])
+
+#temp
+    print("ATTACHMENTS:", attachments)
 
 #version 3.1- sender analysis
     sender_domain = sender_email.split("@")[1]
