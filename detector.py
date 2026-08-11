@@ -109,9 +109,14 @@ def analyze_email(email_text, sender_email, sender_name, attachments):
           "weight": 3,
           "reason": "Sender identity and email domain do not match"
         },
+        "executable_attachment": {
+         "keywords": [],
+         "weight": 3,
+         "reason": "Executable attachment detected"
+        },
     }
 
-    # list 1 for suspicious tlds
+# list 1 for suspicious tlds
     suspicious_tlds = [
         ".xyz",
         ".tk",
@@ -119,7 +124,7 @@ def analyze_email(email_text, sender_email, sender_name, attachments):
         ".click",
     ]
 
-    # list 2 for suspicious domains
+ # list 2 for suspicious domains
     suspicious_domain_words = [
         "verify",
         "login",
@@ -137,6 +142,14 @@ def analyze_email(email_text, sender_email, sender_name, attachments):
     "netflix",
     "apple",
     "linkedin"
+]
+
+    suspicious_extensions = [
+    ".exe",
+    ".scr",
+    ".bat",
+    ".cmd",
+    ".js"
 ]
 
     # vars
@@ -193,6 +206,21 @@ def analyze_email(email_text, sender_email, sender_name, attachments):
                score += indicators["sender_mismatch"]["weight"]
                reasons.append(indicators["sender_mismatch"]["reason"])
             break
+
+# Version 3.2 - Executable Attachment Detection
+
+    executable_attachment_found = False
+    for attachment in attachments:
+         print("CHECKING:", attachment)
+
+         if any(attachment.endswith(ext) for ext in suspicious_extensions):
+            executable_attachment_found = True
+            print("EXECUTABLE FOUND:", attachment)
+            break
+
+    if executable_attachment_found:
+      score += indicators["executable_attachment"]["weight"]
+      reasons.append(indicators["executable_attachment"]["reason"])
 
     # traversing dict and adding scores and reasons
     for category, indicator in indicators.items():
