@@ -2,23 +2,26 @@ from detector import analyze_email
 #test cases 
 sender_email = "support@amazon.com"
 sender_name = "Customer Support"
+#Version 1,2,3
+#email_text = """
+#URGENT!
 
-email_text = """
-URGENT!
+#Your account has been suspended.
+#Reset your password within 24 hours.
+#Verify your identity immediately.
 
-Your account has been suspended.
-Reset your password within 24 hours.
-Verify your identity immediately.
+#Click here:
+#http://192.168.1.10/login
+#http://192.168.2.10/login
+#http://192.168.3.10/login
+#https://verify-login-bank.xyz/reset
+#https://paypal-login-security.xyz
+#We detected suspicious activity.
+#""" 
 
-Click here:
-http://192.168.1.10/login
-http://192.168.2.10/login
-http://192.168.3.10/login
-https://verify-login-bank.xyz/reset
-https://paypal-login-security.xyz
-
-We detected suspicious activity.
-"""
+#version 4
+with open("emails/phishing_email.txt", "r") as file:
+    email_text = file.read()
 attachments = [
     "invoice.pdf.exe",
 ]
