@@ -1,3 +1,5 @@
+from email import policy
+from email.parser import BytesParser
 from detector import analyze_email
 #test cases 
 sender_email = "support@amazon.com"
@@ -20,11 +22,28 @@ sender_name = "Customer Support"
 #""" 
 
 #version 4
-with open("emails/phishing_email.txt", "r") as file:
-    email_text = file.read()
-attachments = [
-    "invoice.pdf.exe",
-]
+filename = input("Enter email file name: ")
+
+with open(f"sample_emails/{filename}", "rb") as file:
+    msg = BytesParser(policy=policy.default).parse(file)
+
+sender = msg["From"]
+print(sender)
+
+from email.utils import parseaddr
+
+sender_name, sender_email = parseaddr(sender)
+
+print("SENDER NAME:", sender_name)
+print("SENDER EMAIL:", sender_email)
+
+
+email_text = msg.get_body(preferencelist=("plain")).get_content()
+
+print(email_text)
+
+attachments = []
+
 result = analyze_email(
     email_text,
     sender_email,
