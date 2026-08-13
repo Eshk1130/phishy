@@ -41,6 +41,9 @@ return_path = msg.get("Return-Path", "")
 
 print("RETURN PATH:", return_path)
 
+subject = msg.get("Subject", "")
+print("SUBJECT:", subject)
+
 print("SENDER NAME:", sender_name)
 print("SENDER EMAIL:", sender_email)
 
@@ -66,7 +69,8 @@ result = analyze_email(
     sender_name,
     attachments,
     reply_to,
-    return_path
+    return_path,
+    subject
 )
 print("\n PHISHY REPORT \n")
 

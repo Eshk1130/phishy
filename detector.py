@@ -1,6 +1,14 @@
 import re
 
-def analyze_email(email_text, sender_email, sender_name, attachments, reply_to,return_path):
+def analyze_email(
+    email_text,
+    sender_email,
+    sender_name,
+    attachments,
+    reply_to,
+    return_path,
+    subject
+):
     print("ATTACHMENTS RECEIVED:", attachments)
 
     # the dictionary containing scores and reasons
@@ -136,6 +144,11 @@ def analyze_email(email_text, sender_email, sender_name, attachments, reply_to,r
     "weight": 3,
     "reason": "Return-Path differs from sender"
 },
+"subject_threat": {
+    "keywords": [],
+    "weight": 2,
+    "reason": "Suspicious subject line detected"
+},
     }
 
 # list 1 for suspicious tlds
@@ -182,6 +195,17 @@ def analyze_email(email_text, sender_email, sender_name, attachments, reply_to,r
     ".bat",
     ".cmd",
     ".js"
+]
+
+    suspicious_subject_keywords = [
+    "urgent",
+    "verify",
+    "suspended",
+    "reset",
+    "action required",
+    "security alert",
+    "password",
+    "account"
 ]
 
     # vars
@@ -276,6 +300,21 @@ def analyze_email(email_text, sender_email, sender_name, attachments, reply_to,r
             reasons.append(
                 indicators["return_path_mismatch"]["reason"]
             )
+
+# Version 4.3 - Subject Analysis
+
+    print("SUBJECT RECEIVED:", subject)
+    subject_lower = subject.lower()
+
+    for keyword in suspicious_subject_keywords:
+        print("CHECKING:", keyword)
+        if keyword in subject_lower:
+            print("MATCH FOUND:", keyword)
+            score += indicators["subject_threat"]["weight"]
+            reasons.append(
+                indicators["subject_threat"]["reason"]
+            )
+            break
 
 # Version 3.2 - Executable Attachment Detection
 
