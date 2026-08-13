@@ -5,6 +5,8 @@ msg = EmailMessage()
 msg["From"] = "PayPal Support <support@gmail.com>"
 msg["To"] = "victim@example.com"
 msg["Subject"] = "Verify Your Account"
+msg["Reply-To"] = "scammer@evil-domain.xyz"
+msg["Return-Path"] = "bounce@evil-domain.xyz"
 
 msg.set_content("""
 URGENT!

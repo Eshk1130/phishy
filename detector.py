@@ -1,6 +1,6 @@
 import re
 
-def analyze_email(email_text, sender_email, sender_name, attachments):
+def analyze_email(email_text, sender_email, sender_name, attachments, reply_to,return_path):
     print("ATTACHMENTS RECEIVED:", attachments)
 
     # the dictionary containing scores and reasons
@@ -126,6 +126,16 @@ def analyze_email(email_text, sender_email, sender_name, attachments):
     "weight": 3,
     "reason": "Possible brand impersonation detected in URL"
 },
+"reply_to_mismatch": {
+    "keywords": [],
+    "weight": 3,
+    "reason": "Reply-To address differs from sender"
+},
+"return_path_mismatch": {
+    "keywords": [],
+    "weight": 3,
+    "reason": "Return-Path differs from sender"
+},
     }
 
 # list 1 for suspicious tlds
@@ -239,6 +249,33 @@ def analyze_email(email_text, sender_email, sender_name, attachments):
                score += indicators["sender_mismatch"]["weight"]
                reasons.append(indicators["sender_mismatch"]["reason"])
             break
+
+        # Version 4.3 - Reply-To analysis
+
+    if reply_to:
+
+        sender_domain = sender_email.split("@")[1]
+        reply_domain = reply_to.split("@")[1]
+
+    if sender_domain != reply_domain:
+        score += indicators["reply_to_mismatch"]["weight"]
+        reasons.append(
+            indicators["reply_to_mismatch"]["reason"]
+        )
+
+    # Version 4.3 - Return-Path analysis
+
+    print("RETURN PATH RECEIVED:", return_path)
+
+    if return_path:
+        sender_domain = sender_email.split("@")[1]
+        return_domain = return_path.split("@")[1]
+
+        if sender_domain != return_domain:
+            score += indicators["return_path_mismatch"]["weight"]
+            reasons.append(
+                indicators["return_path_mismatch"]["reason"]
+            )
 
 # Version 3.2 - Executable Attachment Detection
 

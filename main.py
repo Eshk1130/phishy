@@ -3,6 +3,7 @@ from email.parser import BytesParser
 from detector import analyze_email
 #test cases 
 sender_email = "support@amazon.com"
+
 sender_name = "Customer Support"
 #Version 1,2,3
 #email_text = """
@@ -33,6 +34,12 @@ print(sender)
 from email.utils import parseaddr
 
 sender_name, sender_email = parseaddr(sender)
+reply_to = msg.get("Reply-To", "")
+print("REPLY TO:", reply_to)
+
+return_path = msg.get("Return-Path", "")
+
+print("RETURN PATH:", return_path)
 
 print("SENDER NAME:", sender_name)
 print("SENDER EMAIL:", sender_email)
@@ -57,9 +64,10 @@ result = analyze_email(
     email_text,
     sender_email,
     sender_name,
-    attachments
+    attachments,
+    reply_to,
+    return_path
 )
-
 print("\n PHISHY REPORT \n")
 
 print(f"Risk Level      : {result['risk_level']}")
