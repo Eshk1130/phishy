@@ -118,15 +118,17 @@ The program reads the selected file and passes its contents to the detection eng
 
 Phishy is currently being expanded to support real saved email files.
 
-It can already:
+It can currently:
 
-* Parse `.eml` files
-* Extract the `From` field
-* Extract sender name
-* Extract sender email
-* Extract the plain-text email body
+- Parse `.eml` files
+- Extract sender name
+- Extract sender email
+- Extract the email subject
+- Extract the plain-text email body
+- Extract email attachments
+- Extract Reply-To headers
 
-Automatic attachment extraction is currently under development.
+The extracted information is automatically passed to the phishing detection engine for analysis.
 
 ---
 
@@ -138,13 +140,15 @@ phishy/
 ├── main.py
 ├── detector.py
 ├── README.md
+|____generate_email.py
 │
 ├── emails/
 │   ├── phishing_email.txt
 │   └── legitimate_email.txt
-│
-├── sample_emails/
-│   └── phishing_email.eml
+|
+sample_emails/
+│   ├── phishing_email.eml
+│   └── legitimate_email.eml
 │
 └── reports/
 ```
@@ -153,23 +157,29 @@ phishy/
 
 Handles:
 
-* User input
-* Email file loading
-* `.eml` parsing
-* Passing extracted information to the detector
-* Displaying the final report
+Handles:
+
+- Email file loading
+- `.eml` parsing
+- Sender extraction
+- Subject extraction
+- Reply-To extraction
+- Attachment extraction
+- Passing extracted information to the detector
+- Displaying the final report
 
 ### `detector.py`
 
 Contains the core phishing detection engine, including:
 
-* Indicators
-* Scoring
-* URL analysis
-* Sender analysis
-* Attachment analysis
-* Risk classification
-
+- Content analysis
+- URL analysis
+- Sender analysis
+- Reply-To analysis
+- Subject analysis
+- Attachment analysis
+- Risk scoring
+- Risk classification
 ---
 
 ## How It Works
@@ -183,6 +193,8 @@ Email File
 Email Parsing
     │
     ├── Sender
+    ├── Subject
+    ├── Reply-To
     ├── Body
     └── Attachments
             │
@@ -192,6 +204,8 @@ Email Parsing
             ├── Content Analysis
             ├── URL Analysis
             ├── Sender Analysis
+            ├── Reply-To Analysis
+            ├── Subject Analysis
             └── Attachment Analysis
                     │
                     ▼
@@ -222,6 +236,8 @@ The report also provides the individual indicators that contributed to the resul
 * **Python**
 * Python `re` module for pattern detection
 * Python `email` package for `.eml` parsing
+* MIME email parsing
+* Email header analysis
 * Regular expressions
 * Rule-based threat detection
 * Risk scoring
@@ -250,26 +266,34 @@ No external machine-learning model is currently required.
 
 ### Version 4
 
-**In progress**
+**Completed**
 
-* File-based email input
-* `.eml` parsing
-* Automatic sender extraction
-* Automatic email body extraction
-* Automatic attachment extraction
-* Email header analysis
+- File-based email input
+- `.eml` parsing
+- Automatic sender extraction
+- Automatic subject extraction
+- Automatic Reply-To extraction
+- Automatic email body extraction
+- Automatic attachment extraction
+- Email header analysis
+- Subject threat detection
+- Reply-To mismatch detection
 
-### Planned Version 5
+### Planned Version 5 - Web Platform
 
-Future development will focus on more advanced cybersecurity capabilities, including:
+Future development will focus on more advanced cybersecurity capabilities and a web-based platform, including:
 
-* Threat intelligence integration
-* SPF analysis
-* DKIM analysis
-* DMARC analysis
-* Batch email scanning
-* Improved reporting
-* Possible web-based interface
+- Gmail OAuth integration
+- Gmail-style inbox dashboard
+- Email threat reports inside the interface
+- Automated inbox scanning
+- Threat analytics and reporting
+- Threat intelligence integration
+- SPF analysis
+- DKIM analysis
+- DMARC analysis
+- Batch email scanning
+- Improved reporting
 
 ---
 
