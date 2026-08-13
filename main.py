@@ -39,10 +39,19 @@ print("SENDER EMAIL:", sender_email)
 
 
 email_text = msg.get_body(preferencelist=("plain")).get_content()
+attachments = []
+
+for attachment in msg.iter_attachments():
+    filename = attachment.get_filename()
+
+    if filename:
+        attachments.append(filename)
+
+print("ATTACHMENTS:", attachments)
 
 print(email_text)
 
-attachments = []
+#attachments = []
 
 result = analyze_email(
     email_text,

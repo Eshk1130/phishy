@@ -1,5 +1,13 @@
 From: PayPal Support <support@gmail.com>
+To: victim@example.com
 Subject: Verify Your Account
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============8830693652195954954=="
+
+--===============8830693652195954954==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
 
 URGENT!
 
@@ -12,3 +20,13 @@ Reset your password within 24 hours.
 Click here:
 
 https://paypal-login-security.xyz/reset
+
+--===============8830693652195954954==
+Content-Type: application/octet-stream
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="invoice.pdf.exe"
+MIME-Version: 1.0
+
+ZmFrZSBhdHRhY2htZW50IGNvbnRlbnQ=
+
+--===============8830693652195954954==--

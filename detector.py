@@ -1,6 +1,8 @@
 import re
 
 def analyze_email(email_text, sender_email, sender_name, attachments):
+    print("ATTACHMENTS RECEIVED:", attachments)
+
     # the dictionary containing scores and reasons
     indicators = {
         "urgency": {
