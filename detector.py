@@ -281,9 +281,9 @@ def analyze_email(
         sender_domain = sender_email.split("@")[1]
         reply_domain = reply_to.split("@")[1]
 
-    if sender_domain != reply_domain:
-        score += indicators["reply_to_mismatch"]["weight"]
-        reasons.append(
+        if sender_domain != reply_domain:
+           score += indicators["reply_to_mismatch"]["weight"]
+           reasons.append(
             indicators["reply_to_mismatch"]["reason"]
         )
 
