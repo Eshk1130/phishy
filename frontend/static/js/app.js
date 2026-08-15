@@ -3,6 +3,83 @@ let emails      = [];   // all uploaded emails
 let activeId    = null; // currently viewed email id
 let emailCount  = 0;
 
+/* ── GMAIL AUTH ─────────────────────────────────────────────── */
+async function connectGmail() {
+  const btn = $('connectGmailBtn');
+  const isConnected = btn.classList.contains('connected');
+
+  if (isConnected) {
+    // Disconnect
+    await fetch('/gmail/logout');
+    btn.classList.remove('connected');
+    $('gmailBtnText').textContent = 'Connect Gmail';
+    showToast('Disconnected from Gmail');
+    return;
+  }
+
+  // Get auth URL and redirect
+  showToast('Redirecting to Google…');
+  const resp = await fetch('/gmail/auth');
+  const data = await resp.json();
+  window.location.href = data.auth_url;
+}
+
+async function loadGmailInbox() {
+  showToast('📬 Loading Gmail inbox…');
+  setProgress(20);
+
+  try {
+    const resp = await fetch('/gmail/inbox');
+    setProgress(70);
+
+    if (resp.status === 401) {
+      showToast('⚠ Connect Gmail first');
+      setProgress(null);
+      return;
+    }
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      showToast('❌ ' + (err.error || 'Failed to load inbox'));
+      setProgress(null);
+      return;
+    }
+
+    const newEmails = await resp.json();
+    newEmails.forEach(e => {
+      e.time = formatTime();
+      emails.unshift(e);
+      emailCount++;
+    });
+
+    renderEmailList();
+    updateBadge();
+    setProgress(null);
+    showToast(`✅ Loaded ${newEmails.length} emails from Gmail`);
+
+  } catch(err) {
+    showToast('❌ Could not reach server');
+    setProgress(null);
+  }
+}
+
+async function checkGmailStatus() {
+  try {
+    const resp = await fetch('/gmail/status');
+    const data = await resp.json();
+    const btn  = $('connectGmailBtn');
+
+    if (data.connected) {
+      btn.classList.add('connected');
+      $('gmailBtnText').textContent = 'Gmail Connected ✓';
+      // Auto-load inbox if no emails yet
+      if (emails.length === 0) loadGmailInbox();
+    }
+  } catch(_) {}
+}
+
+
+
 /* ── REASON METADATA ────────────────────────────────────────── */
 const REASON_META = {
   "URL detected in email":                       { title: "URL Detected",            desc: "One or more URLs were found in the email body." },
@@ -340,3 +417,4 @@ function escHtml(str) {
 /* ── INIT ───────────────────────────────────────────────────── */
 renderEmailList();
 updateBadge();
+checkGmailStatus();  // check if already logged in (e.g. after OAuth redirect)

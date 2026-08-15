@@ -1,6 +1,6 @@
 from email import policy
 from email.parser import BytesParser
-from detector import analyze_email
+from backend.detector import analyze_email
 #test cases 
 sender_email = "support@amazon.com"
 

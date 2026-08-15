@@ -76,6 +76,25 @@ html, body { height: 100%; font-family: 'Google Sans', 'Roboto', sans-serif; bac
 }
 .compose-btn:hover { background: #404144; box-shadow: 0 2px 8px rgba(0,0,0,.5); }
 
+.connect-gmail-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 12px 16px;
+  padding: 10px 22px;
+  background: transparent;
+  color: var(--text-sec);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.connect-gmail-btn:hover { background: var(--row-hover); color: var(--text-pri); border-color: #5f6368; }
+.connect-gmail-btn.connected { color: var(--green); border-color: rgba(52,168,83,.4); background: rgba(52,168,83,.08); }
+.connect-gmail-btn svg { flex-shrink: 0; }
+
 .sidebar-nav { display: flex; flex-direction: column; gap: 2px; padding: 0 8px; }
 
 .nav-item {
