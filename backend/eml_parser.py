@@ -1,6 +1,18 @@
+import re
+import html as _html
 from email import policy
 from email.parser import BytesParser
 from email.utils import parseaddr
+
+
+def _strip_html(raw):
+    """Strip HTML tags and decode entities to plain readable text."""
+    raw = re.sub(r'<(style|script)[^>]*>.*?</\1>', '', raw, flags=re.DOTALL | re.IGNORECASE)
+    raw = re.sub(r'<[^>]+>', ' ', raw)
+    raw = _html.unescape(raw)
+    raw = re.sub(r'[ \t]+', ' ', raw)
+    raw = re.sub(r'\n{3,}', '\n\n', raw)
+    return raw.strip()
 
 
 def parse_eml(file_bytes):
@@ -10,44 +22,34 @@ def parse_eml(file_bytes):
 
     Returns:
         dict with keys:
-            sender_name    (str)
-            sender_email   (str)
-            subject        (str)
-            reply_to       (str)
-            return_path    (str)
-            email_text     (str)
-            attachments    (list[str])
-            raw_from       (str)  - original From header, for display
+            sender_name, sender_email, subject, reply_to,
+            return_path, email_text, attachments, raw_from
     """
-
     msg = BytesParser(policy=policy.default).parsebytes(file_bytes)
 
-    # --- Sender ---
     raw_from = msg.get("From", "")
     sender_name, sender_email = parseaddr(raw_from)
-
-    # Fallback: if sender_email is empty, use the raw value
     if not sender_email:
         sender_email = raw_from
-        sender_name = raw_from
+        sender_name  = raw_from
 
-    # --- Headers ---
     subject     = msg.get("Subject", "")
     reply_to    = msg.get("Reply-To", "")
     return_path = msg.get("Return-Path", "")
 
-    # Strip angle brackets from Return-Path if present  e.g. <user@domain.com>
     if return_path.startswith("<") and return_path.endswith(">"):
         return_path = return_path[1:-1]
 
-    # --- Body ---
-    # Prefer plain text; fall back to HTML
+    # Prefer plain text; strip HTML tags if only HTML body available
     email_text = ""
-    body_part = msg.get_body(preferencelist=("plain", "html"))
+    body_part  = msg.get_body(preferencelist=("plain", "html"))
     if body_part:
-        email_text = body_part.get_content()
+        content = body_part.get_content()
+        if body_part.get_content_type() == "text/html":
+            email_text = _strip_html(content)
+        else:
+            email_text = content
 
-    # --- Attachments ---
     attachments = []
     for part in msg.iter_attachments():
         filename = part.get_filename()

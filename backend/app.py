@@ -1,8 +1,11 @@
 import os
 import uuid
+import base64
 import traceback
+import email.message
 
-from flask import Flask, request, jsonify, render_template, session
+from flask import Flask, request, jsonify, render_template, session, redirect
+from googleapiclient.discovery import build
 
 from .eml_parser import parse_eml
 from .detector import analyze_email
@@ -29,7 +32,7 @@ app.secret_key = os.environ.get("PHISHY_SECRET", "phishy-dev-secret-key-change-i
 email_store = {}
 
 
-# ── Routes ─────────────────────────────────────────────────────────────────
+# ── Core routes ─────────────────────────────────────────────────────────────
 
 @app.route("/")
 def home():
@@ -140,9 +143,8 @@ def get_email(email_id):
 def gmail_auth():
     """Redirect user to Google's OAuth consent screen."""
     auth_url, state, code_verifier = get_auth_url()
-    # Store PKCE verifier in session so callback can use it
-    session["oauth_state"]    = state
-    session["code_verifier"]  = code_verifier  # may be None if PKCE not used
+    session["oauth_state"]   = state
+    session["code_verifier"] = code_verifier
     return jsonify({"auth_url": auth_url})
 
 
@@ -153,7 +155,6 @@ def gmail_callback():
     if not code:
         return jsonify({"error": "No authorization code received"}), 400
 
-    # Retrieve and clear the PKCE verifier from session
     code_verifier = session.pop("code_verifier", None)
 
     try:
@@ -162,29 +163,34 @@ def gmail_callback():
     except Exception as e:
         return jsonify({"error": f"Token exchange failed: {str(e)}"}), 500
 
-    from flask import redirect
     return redirect("/")
 
 
 @app.route("/gmail/inbox")
 def gmail_inbox():
     """
-    Fetch the user's real Gmail inbox, run the detector on each email,
-    and return a list of analyzed emails.
+    Fetch the user's Gmail inbox.
+    Supports optional pagination via `page_token` query param.
+    Returns JSON containing `messages` and optionally `next_page_token`.
     """
     if "gmail_token" not in session:
-        return jsonify({"error": "Not authenticated", "auth_required": True}), 401
+        return jsonify({"error": "Not authenticated – connect Gmail first.", "auth_required": True}), 401
 
     try:
-        creds = credentials_from_dict(session["gmail_token"])
-        raw_emails = fetch_inbox(creds, max_results=20)
+        creds        = credentials_from_dict(session["gmail_token"])
+        page_token   = request.args.get("page_token")
+        max_results  = min(int(request.args.get("max_results", 200)), 500)
+        label        = request.args.get("label")  # optional Gmail label ID
+        raw_emails, next_token = fetch_inbox(
+            creds, max_results=max_results, page_token=page_token, label_id=label
+        )
     except Exception as e:
-        return jsonify({"error": f"Failed to fetch inbox: {str(e)}", "trace": traceback.format_exc()}), 500
+        return jsonify({"error": f"Failed to fetch inbox: {e}", "trace": traceback.format_exc()}), 500
 
     results = []
     for raw in raw_emails:
         try:
-            parsed = parse_eml(raw)
+            parsed   = parse_eml(raw)
             analysis = analyze_email(
                 parsed["email_text"],
                 parsed["sender_email"],
@@ -196,7 +202,6 @@ def gmail_inbox():
             )
             email_id = str(uuid.uuid4())
             email_store[email_id] = {"parsed": parsed, "analysis": analysis}
-
             results.append({
                 "id":           email_id,
                 "sender_name":  parsed["sender_name"],
@@ -210,10 +215,72 @@ def gmail_inbox():
                 "reasons":      analysis["reasons"],
                 "attachments":  parsed["attachments"],
             })
-        except Exception:
-            continue  # skip unparseable emails silently
+        except Exception as exc:
+            import traceback as _tb
+            # Don't drop the email — include a minimal safe fallback entry
+            fallback_id = str(uuid.uuid4())
+            results.append({
+                "id":           fallback_id,
+                "sender_name":  "Unknown Sender",
+                "sender_email": "",
+                "subject":      "(Email could not be parsed)",
+                "snippet":      str(exc)[:120],
+                "risk_level":   "Low",
+                "risk_score":   0,
+                "max_score":    100,
+                "risk_pct":     0,
+                "reasons":      [],
+                "attachments":  [],
+            })
 
-    return jsonify(results)
+    payload = {"messages": results}
+    if next_token:
+        payload["next_page_token"] = next_token
+    return jsonify(payload)
+
+
+@app.route("/gmail/labels")
+def gmail_labels():
+    """Return all Gmail labels for the authenticated user."""
+    if "gmail_token" not in session:
+        return jsonify({"error": "Not authenticated", "auth_required": True}), 401
+    try:
+        creds   = credentials_from_dict(session["gmail_token"])
+        service = build("gmail", "v1", credentials=creds)
+        result  = service.users().labels().list(userId="me").execute()
+        labels  = result.get("labels", [])
+        return jsonify([{"id": lbl["id"], "name": lbl.get("name", "")} for lbl in labels])
+    except Exception as e:
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+
+
+@app.route("/gmail/send", methods=["POST"])
+def gmail_send():
+    """Send an email via Gmail on behalf of the authenticated user."""
+    if "gmail_token" not in session:
+        return jsonify({"error": "Not authenticated", "auth_required": True}), 401
+
+    data    = request.get_json(silent=True) or {}
+    to      = data.get("to")
+    subject = data.get("subject", "(No Subject)")
+    body    = data.get("body", "")
+
+    if not to:
+        return jsonify({"error": "'to' field required"}), 400
+
+    try:
+        creds   = credentials_from_dict(session["gmail_token"])
+        service = build("gmail", "v1", credentials=creds)
+        msg = email.message.EmailMessage()
+        msg["To"]      = to
+        msg["From"]    = "me"
+        msg["Subject"] = subject
+        msg.set_content(body)
+        raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+        service.users().messages().send(userId="me", body={"raw": raw}).execute()
+        return jsonify({"status": "sent"})
+    except Exception as e:
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
 
 @app.route("/gmail/logout")

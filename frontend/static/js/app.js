@@ -1,124 +1,176 @@
-/* ── STATE ─────────────────────────────────────────────────── */
-let emails      = [];   // all uploaded emails
-let activeId    = null; // currently viewed email id
-let emailCount  = 0;
+/* ── STATE ────────────────────────────────────────────────── */
+let inboxEmails = [];
+let spamEmails = [];
+let activeId = null;
+let currentTab = 'inbox';
+let inboxNextPage = null;
+let spamNextPage = null;
+let _scrollFetch = false;
 
-/* ── GMAIL AUTH ─────────────────────────────────────────────── */
+function getEmails() { return currentTab === 'inbox' ? inboxEmails : spamEmails; }
+function getNextPage() { return currentTab === 'inbox' ? inboxNextPage : spamNextPage; }
+
+/* ── GMAIL AUTH ───────────────────────────────────────────── */
 async function connectGmail() {
   const btn = $('connectGmailBtn');
-  const isConnected = btn.classList.contains('connected');
-
-  if (isConnected) {
-    // Disconnect
+  if (btn.classList.contains('connected')) {
     await fetch('/gmail/logout');
     btn.classList.remove('connected');
     $('gmailBtnText').textContent = 'Connect Gmail';
+    inboxEmails = []; spamEmails = [];
+    inboxNextPage = null; spamNextPage = null;
+    renderEmailList(); updateBadges(); updateDashStats();
     showToast('Disconnected from Gmail');
     return;
   }
-
-  // Get auth URL and redirect
-  showToast('Redirecting to Google…');
+  showToast('Redirecting to Google...');
   const resp = await fetch('/gmail/auth');
   const data = await resp.json();
   window.location.href = data.auth_url;
-}
-
-async function loadGmailInbox() {
-  showToast('📬 Loading Gmail inbox…');
-  setProgress(20);
-
-  try {
-    const resp = await fetch('/gmail/inbox');
-    setProgress(70);
-
-    if (resp.status === 401) {
-      showToast('⚠ Connect Gmail first');
-      setProgress(null);
-      return;
-    }
-
-    if (!resp.ok) {
-      const err = await resp.json();
-      showToast('❌ ' + (err.error || 'Failed to load inbox'));
-      setProgress(null);
-      return;
-    }
-
-    const newEmails = await resp.json();
-    newEmails.forEach(e => {
-      e.time = formatTime();
-      emails.unshift(e);
-      emailCount++;
-    });
-
-    renderEmailList();
-    updateBadge();
-    setProgress(null);
-    showToast(`✅ Loaded ${newEmails.length} emails from Gmail`);
-
-  } catch(err) {
-    showToast('❌ Could not reach server');
-    setProgress(null);
-  }
 }
 
 async function checkGmailStatus() {
   try {
     const resp = await fetch('/gmail/status');
     const data = await resp.json();
-    const btn  = $('connectGmailBtn');
-
     if (data.connected) {
+      const btn = $('connectGmailBtn');
       btn.classList.add('connected');
-      $('gmailBtnText').textContent = 'Gmail Connected ✓';
-      // Auto-load inbox if no emails yet
-      if (emails.length === 0) loadGmailInbox();
+      $('gmailBtnText').textContent = 'Gmail Connected';
+      // Load inbox and spam concurrently so both tabs are ready
+      if (inboxEmails.length === 0) {
+        loadGmailInbox();
+        loadGmailSpam(); // background-load spam too
+      }
     }
-  } catch(_) {}
+  } catch (_) { }
 }
 
+/* ── LOAD INBOX ───────────────────────────────────────────── */
+async function loadGmailInbox(pageToken = null) {
+  showToast('Loading inbox...');
+  setProgress(20);
+  try {
+    let url = '/gmail/inbox?max_results=100';
+    if (pageToken) url += '&page_token=' + encodeURIComponent(pageToken);
+    const resp = await fetch(url);
+    setProgress(70);
+    if (resp.status === 401) { showToast('Connect Gmail first'); setProgress(null); return; }
+    if (!resp.ok) { const e = await resp.json(); showToast(e.error || 'Failed'); setProgress(null); return; }
+    const data = await resp.json();
+    inboxNextPage = data.next_page_token || null;
+    (data.messages || []).forEach(e => { e.time = formatTime(); inboxEmails.unshift(e); });
+    if (currentTab === 'inbox') renderEmailList();
+    updateBadges(); updateDashStats();
+    setProgress(null);
+    showToast('Loaded ' + (data.messages || []).length + ' inbox emails');
+  } catch (err) {
+    console.error(err);
+    showToast('Could not reach server');
+    setProgress(null);
+  }
+}
 
+/* ── LOAD SPAM ────────────────────────────────────────────── */
+async function loadGmailSpam(pageToken = null) {
+  showToast('Loading spam...');
+  setProgress(20);
+  try {
+    let url = '/gmail/inbox?label=SPAM&max_results=100';
+    if (pageToken) url += '&page_token=' + encodeURIComponent(pageToken);
+    const resp = await fetch(url);
+    setProgress(70);
+    if (resp.status === 401) { showToast('Connect Gmail first'); setProgress(null); return; }
+    if (!resp.ok) { const e = await resp.json(); showToast(e.error || 'Failed'); setProgress(null); return; }
+    const data = await resp.json();
+    spamNextPage = data.next_page_token || null;
+    (data.messages || []).forEach(e => { e.time = formatTime(); spamEmails.unshift(e); });
+    if (currentTab === 'spam') renderEmailList();
+    updateBadges(); updateDashStats();
+    setProgress(null);
+    showToast('Loaded ' + (data.messages || []).length + ' spam emails');
+  } catch (err) {
+    console.error(err);
+    showToast('Could not reach server');
+    setProgress(null);
+  }
+}
 
-/* ── REASON METADATA ────────────────────────────────────────── */
-const REASON_META = {
-  "URL detected in email":                       { title: "URL Detected",            desc: "One or more URLs were found in the email body." },
-  "Possible brand impersonation detected in URL":{ title: "Brand Impersonation",     desc: "A URL appears to impersonate a known brand domain." },
-  "Suspicious domain detected":                  { title: "Suspicious Domain",        desc: "The link domain uses suspicious keywords or TLDs." },
-  "Sender identity and email domain do not match":{ title: "Suspicious Sender",       desc: "The sender name claims to be a brand but the email domain doesn't match." },
-  "Reply-To address differs from sender":        { title: "Reply-To Mismatch",        desc: "Replies will go to a different address than the sender — a classic phishing trick." },
-  "Return-Path differs from sender":             { title: "Return-Path Mismatch",     desc: "Bounces go to a different domain, suggesting the sender is spoofed." },
-  "Suspicious subject line detected":            { title: "Urgent Subject Line",      desc: "The subject uses alarming language to provoke immediate action." },
-  "Executable attachment detected":              { title: "Dangerous Attachment",     desc: "An attachment with an executable extension (.exe, .bat, etc.) was found." },
-  "Double extension attachment detected":        { title: "Double Extension",         desc: "Attachment disguises its true type using a double extension (e.g. invoice.pdf.exe)." },
-  "Urgency tactic detected":                     { title: "Urgency Language",         desc: "Uses urgent or threatening language to provoke immediate action." },
-  "Identity verification request detected":      { title: "Verification Request",     desc: "Asks you to verify your identity or account — a common phishing hook." },
-  "Account threat detected":                     { title: "Account Threat",           desc: "Claims your account has been suspended or blocked." },
-  "Password reset request detected":             { title: "Password Reset",           desc: "Requests a password reset — verify through the official site directly." },
-  "Security scare tactic detected":              { title: "Security Scare",           desc: "Reports suspicious activity to create panic." },
-  "Suspicious link request detected":            { title: "Click-Here Link",          desc: "Uses 'click here' — a common phishing phrase." },
-  "Payment information request detected":        { title: "Payment Request",          desc: "Requests payment details or reports a failed payment." },
-  "Prize scam language detected":                { title: "Prize Scam",               desc: "Claims you've won something to lure you into clicking." },
-  "Address verification request detected":       { title: "Address Request",          desc: "Asks you to confirm your address — used for identity theft." },
-  "Multiple URLs detected":                      { title: "Multiple URLs",            desc: "Contains many links, increasing the attack surface." },
-  "Raw IP address detected in URL":              { title: "Raw IP URL",               desc: "A URL uses a raw IP address instead of a domain — very suspicious." },
-};
+/* ── TAB SWITCHING ────────────────────────────────────────── */
+function switchTab(tab) {
+  currentTab = tab;
+  $('tabInbox').classList.toggle('active', tab === 'inbox');
+  $('tabSpam').classList.toggle('active', tab === 'spam');
+  activeId = null;
+  renderEmailList();
+  if (tab === 'spam' && spamEmails.length === 0) {
+    loadGmailSpam();
+  }
+}
 
-const ICON_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>`;
+/* ── INFINITE SCROLL ──────────────────────────────────────── */
+const _sentinel = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting && getNextPage() && !_scrollFetch) {
+    _scrollFetch = true;
+    const loader = currentTab === 'inbox' ? loadGmailInbox : loadGmailSpam;
+    loader(getNextPage()).finally(() => { _scrollFetch = false; });
+  }
+}, { threshold: 0.5 });
 
-/* ── HELPERS ────────────────────────────────────────────────── */
+/* ── MODALS ───────────────────────────────────────────────── */
+function openGuidelines() { $('guidelinesBackdrop').style.display = 'flex'; }
+function closeGuidelines() { $('guidelinesBackdrop').style.display = 'none'; }
+function openWhyPhishy() { $('whyPhishyBackdrop').style.display = 'flex'; }
+function closeWhyPhishy() { $('whyPhishyBackdrop').style.display = 'none'; }
+
+/* ── DASHBOARD STATS ──────────────────────────────────────── */
+function updateDashStats() {
+  const all = [...inboxEmails, ...spamEmails];
+  const total = all.length;
+  const high = all.filter(e => e.risk_level === 'High').length;
+  const medium = all.filter(e => e.risk_level === 'Medium').length;
+  const safe = all.filter(e => e.risk_level === 'Low').length;
+
+  $('statTotal').textContent = total;
+  $('statHigh').textContent = high;
+  $('statMedium').textContent = medium;
+  $('statSafe').textContent = safe;
+
+  // Animated risk distribution bar
+  if (total > 0) {
+    const bar = $('dashRiskBar');
+    bar.style.display = 'flex';
+    $('drbHigh').style.width = (high / total * 100).toFixed(1) + '%';
+    $('drbMedium').style.width = (medium / total * 100).toFixed(1) + '%';
+    $('drbLow').style.width = (safe / total * 100).toFixed(1) + '%';
+  }
+}
+
+function updateBadges() {
+  $('inboxBadge').textContent = inboxEmails.length;
+  $('spamBadge').textContent = spamEmails.length;
+}
+
+/* ── STRIP HTML ───────────────────────────────────────────── */
+function stripHtml(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html;
+  return (d.innerText || d.textContent || '').replace(/\s{3,}/g, '\n\n').trim();
+}
+
+/* ── HELPERS ──────────────────────────────────────────────── */
 function $(id) { return document.getElementById(id); }
 
-function showToast(msg, duration = 3000) {
+function showToast(msg, ms = 3000) {
   const t = $('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), duration);
+  setTimeout(() => t.classList.remove('show'), ms);
 }
 
 function setProgress(pct) {
-  const bar = $('progressBar');
   const wrap = $('uploadProgress');
+  const bar = $('progressBar');
   if (pct === null) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
   bar.style.width = pct + '%';
@@ -129,82 +181,61 @@ function riskClass(level) {
 }
 
 function formatTime() {
-  const now = new Date();
-  return now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
 
-/* ── FILE UPLOAD ────────────────────────────────────────────── */
-function triggerUpload() {
-  $('emlUpload').click();
-}
+/* ── FILE UPLOAD ──────────────────────────────────────────── */
+function triggerUpload() { $('emlUpload').click(); }
 
 async function handleFileUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
   await uploadFile(file);
-  event.target.value = ''; // reset so same file can be re-uploaded
+  event.target.value = '';
 }
 
 async function uploadFile(file) {
-  if (!file.name.endsWith('.eml')) {
-    showToast('⚠ Only .eml files are supported');
-    return;
-  }
-
+  if (!file.name.endsWith('.eml')) { showToast('Only .eml files supported'); return; }
   setProgress(30);
-  showToast(`📨 Analyzing ${file.name}…`);
-
-  const formData = new FormData();
-  formData.append('file', file);
-
+  showToast('Analyzing ' + file.name + '...');
+  const fd = new FormData();
+  fd.append('file', file);
   try {
     setProgress(60);
-    const resp = await fetch('/upload', { method: 'POST', body: formData });
+    const resp = await fetch('/upload', { method: 'POST', body: fd });
     setProgress(90);
-
-    if (!resp.ok) {
-      const err = await resp.json();
-      showToast('❌ ' + (err.error || 'Upload failed'));
-      setProgress(null);
-      return;
-    }
-
+    if (!resp.ok) { const e = await resp.json(); showToast(e.error || 'Upload failed'); setProgress(null); return; }
     const email = await resp.json();
     email.time = formatTime();
     email.filename = file.name;
-
-    emails.unshift(email);
-    emailCount++;
-    renderEmailList();
-    updateBadge();
+    inboxEmails.unshift(email);
+    if (currentTab === 'inbox') renderEmailList();
+    updateBadges(); updateDashStats();
     openEmail(email.id);
-    showToast(`✅ Analysis complete — ${email.risk_level} Risk`);
+    showToast('Analysis complete — ' + email.risk_level + ' Risk');
     setProgress(null);
-
   } catch (e) {
-    showToast('❌ Could not reach server');
+    showToast('Could not reach server');
     setProgress(null);
   }
 }
 
-/* ── DRAG & DROP ────────────────────────────────────────────── */
-const rows = $('emailRows');
-const overlay = $('dropOverlay');
-
-document.addEventListener('dragover', e => { e.preventDefault(); overlay.classList.add('active'); });
-document.addEventListener('dragleave', e => { if (!e.relatedTarget) overlay.classList.remove('active'); });
+/* ── DRAG & DROP ──────────────────────────────────────────── */
+document.addEventListener('dragover', e => { e.preventDefault(); $('dropOverlay').classList.add('active'); });
+document.addEventListener('dragleave', e => { if (!e.relatedTarget) $('dropOverlay').classList.remove('active'); });
 document.addEventListener('drop', e => {
   e.preventDefault();
-  overlay.classList.remove('active');
+  $('dropOverlay').classList.remove('active');
   const file = e.dataTransfer.files[0];
   if (file) uploadFile(file);
 });
 
-/* ── RENDER EMAIL LIST ──────────────────────────────────────── */
+/* ── RENDER EMAIL LIST ────────────────────────────────────── */
 function renderEmailList() {
   const container = $('emailRows');
   const empty = $('emptyState');
   const dropZone = $('dropOverlay');
+  const emails = getEmails();
 
   if (emails.length === 0) {
     empty.style.display = 'flex';
@@ -215,154 +246,122 @@ function renderEmailList() {
   }
 
   empty.style.display = 'none';
-
-  // Rebuild rows
   container.innerHTML = '';
   container.appendChild(dropZone);
 
   emails.forEach(email => {
     const div = document.createElement('div');
-    div.className = `email-row unread ${activeId === email.id ? 'selected' : ''}`;
+    div.className = 'email-row unread' + (activeId === email.id ? ' selected' : '');
     div.id = 'row-' + email.id;
     div.onclick = () => openEmail(email.id);
-
     div.innerHTML = `
-      <div class="row-check"><input type="checkbox" class="checkbox" onclick="e=>e.stopPropagation()"/></div>
       <span class="row-risk-badge ${riskClass(email.risk_level)}">${email.risk_level}</span>
       <div class="row-content">
         <div class="row-sender">${escHtml(email.sender_name || email.sender_email)}</div>
-        <div class="row-subject-line">
-          <span class="row-subject">${escHtml(email.subject)}</span>
-        </div>
+        <div class="row-subject">${escHtml(email.subject)}</div>
         <div class="row-snippet">${escHtml(email.snippet || '')}</div>
       </div>
-      <div class="row-time">${email.time || ''}</div>
-    `;
+      <div class="row-time">${email.time || ''}</div>`;
     container.appendChild(div);
   });
+
+  // Re-attach sentinel inside scrolling container
+  const sentinel = $('scrollSentinel');
+  if (sentinel) container.appendChild(sentinel);
 }
 
-function updateBadge() {
-  $('inboxBadge').textContent = emails.length;
-}
-
-/* ── OPEN EMAIL ─────────────────────────────────────────────── */
+/* ── OPEN EMAIL ───────────────────────────────────────────── */
 async function openEmail(id) {
   activeId = id;
-
-  // Highlight row
   document.querySelectorAll('.email-row').forEach(r => r.classList.remove('selected'));
   const row = $('row-' + id);
   if (row) row.classList.add('selected');
 
-  // Fetch full email from server
-  let email = emails.find(e => e.id === id);
-
+  let email = getEmails().find(e => e.id === id);
   try {
-    const resp = await fetch(`/emails/${id}`);
-    if (resp.ok) {
-      const full = await resp.json();
-      email = { ...email, ...full };
-    }
-  } catch(_) {}
+    const resp = await fetch('/emails/' + id);
+    if (resp.ok) email = { ...email, ...(await resp.json()) };
+  } catch (_) { }
 
   populateViewer(email);
   populatePanel(email);
+
+  const idx = getEmails().findIndex(e => e.id === id);
+  $('viewerCount').textContent = (idx + 1) + ' of ' + getEmails().length;
 }
 
 function populateViewer(e) {
-  // Subject
   $('viewerSubject').textContent = e.subject || '(no subject)';
 
-  // Risk badge
   const badge = $('viewerRiskBadge');
   badge.textContent = e.risk_level + ' Risk';
   badge.className = 'risk-badge-large ' + riskClass(e.risk_level);
 
-  // Sender
   const initials = (e.sender_name || e.sender_email || '?').charAt(0).toUpperCase();
   $('senderAvatar').textContent = initials;
   $('senderNameBig').textContent = e.sender_name || e.sender_email;
   $('senderEmailTag').textContent = '<' + (e.sender_email || '') + '>';
   $('viewerTime').textContent = e.time || formatTime();
 
-  // Warning banner
   const banner = $('warningBanner');
   if (e.risk_level === 'High' || e.risk_level === 'Medium') {
     banner.style.display = 'flex';
-    $('warningText').textContent =
-      e.risk_level === 'High'
-        ? 'This email has been flagged as potentially dangerous. Be careful with links and attachments.'
-        : 'This email shows some suspicious signals. Proceed with caution.';
+    $('warningText').textContent = e.risk_level === 'High'
+      ? 'This email has been flagged as potentially dangerous. Do not click links or open attachments.'
+      : 'This email shows suspicious signals. Proceed with caution.';
   } else {
     banner.style.display = 'none';
   }
 
-  // Body
-  const body = $('viewerBody');
+  // Show plain text — strip any residual HTML
   const rawBody = e.body || e.email_text || '';
-  body.innerHTML = rawBody
-    ? '<pre style="white-space:pre-wrap;font-family:inherit;font-size:14px;line-height:1.7">' + escHtml(rawBody) + '</pre>'
+  const plainBody = rawBody.includes('<') ? stripHtml(rawBody) : rawBody;
+  $('viewerBody').innerHTML = plainBody
+    ? '<pre style="white-space:pre-wrap;font-family:inherit;font-size:14px;line-height:1.75">' + escHtml(plainBody) + '</pre>'
     : '<p style="color:#9aa0a6">No body content.</p>';
-
-  // Viewer count
-  const idx = emails.findIndex(em => em.id === activeId);
-  $('viewerCount').textContent = `${idx + 1} of ${emails.length}`;
-
-  // Show reply bar
-  $('replyBar').style.display = 'flex';
 }
 
 function populatePanel(e) {
-  // Risk card colours
   const card = $('riskCard');
   card.className = 'risk-card risk-' + e.risk_level.toLowerCase() + '-panel';
 
   $('riskLevelLabel').textContent = e.risk_level + ' Risk';
-  $('riskScoreText').textContent  = `Risk Score: ${e.risk_score} / ${e.max_score}`;
-  $('riskBarFill').style.width    = e.risk_pct + '%';
+  $('riskScoreText').textContent = 'Risk Score: ' + e.risk_score + ' / ' + e.max_score;
+  $('riskBarFill').style.width = e.risk_pct + '%';
 
-  // Reasons
   const list = $('reasonList');
   const reasons = e.reasons || [];
-
   if (!reasons.length) {
     list.innerHTML = '<p class="panel-placeholder">No suspicious signals detected.</p>';
   } else {
     list.innerHTML = reasons.map(r => {
       const meta = REASON_META[r] || { title: r, desc: '' };
-      return `
-        <div class="reason-item">
-          <div class="reason-icon">${ICON_SVG}</div>
-          <div>
-            <div class="reason-title">${meta.title}</div>
-            <div class="reason-desc">${meta.desc}</div>
-          </div>
-        </div>`;
+      return `<div class="reason-item">
+        <div class="reason-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg></div>
+        <div><div class="reason-title">${meta.title}</div><div class="reason-desc">${meta.desc}</div></div>
+      </div>`;
     }).join('');
   }
 
-  // Recommendations
   const recSection = $('recommendations');
-  const recList    = $('recList');
+  const recList = $('recList');
   const recs = getRecommendations(e.risk_level);
   if (recs.length) {
     recSection.style.display = 'block';
-    recList.innerHTML = recs.map(r => `<li>${r}</li>`).join('');
+    recList.innerHTML = recs.map(r => '<li>' + r + '</li>').join('');
   } else {
     recSection.style.display = 'none';
   }
 
-  // Report button
   $('reportBtn').style.display = e.risk_level !== 'Low' ? 'flex' : 'none';
 }
 
 function getRecommendations(level) {
   if (level === 'High') return [
-    'Do not click on any links.',
-    'Do not share any personal information.',
+    'Do not click any links in this email.',
     'Do not open any attachments.',
-    'Report this email to your admin.',
+    'Do not reply or share personal information.',
+    'Report this to your IT / security team.',
   ];
   if (level === 'Medium') return [
     'Verify the sender through official channels.',
@@ -372,49 +371,104 @@ function getRecommendations(level) {
   return ['No major threats detected. Stay vigilant.'];
 }
 
-/* ── CLOSE VIEWER ───────────────────────────────────────────── */
 function closeViewer() {
   activeId = null;
   document.querySelectorAll('.email-row').forEach(r => r.classList.remove('selected'));
-  $('viewerSubject').textContent = '—';
-  $('viewerBody').innerHTML = '<p style="color:#9aa0a6;text-align:center;margin-top:60px">Select an email from the list to view it here.</p>';
+  $('viewerSubject').textContent = '\u2014';
+  $('viewerBody').innerHTML = '<p style="color:#9aa0a6;text-align:center;margin-top:60px">Select an email to view it here.</p>';
   $('viewerRiskBadge').textContent = '';
-  $('senderNameBig').textContent = '—';
-  $('senderEmailTag').textContent = '—';
+  $('senderNameBig').textContent = '\u2014';
+  $('senderEmailTag').textContent = '\u2014';
+  $('senderAvatar').textContent = '?';
+  $('viewerTime').textContent = '\u2014';
   $('warningBanner').style.display = 'none';
-  $('replyBar').style.display = 'none';
   $('reasonList').innerHTML = '<p class="panel-placeholder">No email selected.</p>';
   $('riskCard').className = 'risk-card';
-  $('riskLevelLabel').textContent = '—';
-  $('riskScoreText').textContent = 'Risk Score: —';
+  $('riskLevelLabel').textContent = '\u2014';
+  $('riskScoreText').textContent = 'Risk Score: \u2014';
   $('riskBarFill').style.width = '0%';
   $('recommendations').style.display = 'none';
-  $('reportBtn').style.display = 'none';
+  const rb = $('reportBtn');
+  rb.style.display = 'none';
+  rb.disabled = false;
+  rb.style.background = '';
+  rb.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg> Report as Phishing';
+  $('viewerCount').textContent = '';
+  // Restore the analysis panel if it was dismissed
+  $('phishyPanel').style.display = '';
+  const reopen = $('reopenPanelBtn');
+  if (reopen) reopen.style.display = 'none';
 }
 
-/* ── REPORT PHISHING ────────────────────────────────────────── */
+/* ── PANEL-ONLY CLOSE (keeps email body visible) ─────────── */
+function closePanel() {
+  $('phishyPanel').style.display = 'none';
+  const reopen = $('reopenPanelBtn');
+  if (reopen) reopen.style.display = 'flex';
+}
+
+function openPanel() {
+  $('phishyPanel').style.display = '';
+  const reopen = $('reopenPanelBtn');
+  if (reopen) reopen.style.display = 'none';
+}
+
 function reportPhishing() {
-  showToast('🚩 Reported as phishing. Thank you!');
-  $('reportBtn').disabled = true;
-  $('reportBtn').textContent = '✓ Reported';
+  showToast('Reported as phishing. Thank you!');
+  const btn = $('reportBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Reported';
+  btn.style.background = 'var(--green)';
 }
 
-/* ── SCROLL PANEL ───────────────────────────────────────────── */
 function scrollToPanel() {
   $('phishyPanel').scrollTop = 0;
   $('panelBody').scrollIntoView({ behavior: 'smooth' });
 }
 
-/* ── ESCAPE HTML ────────────────────────────────────────────── */
 function escHtml(str) {
   return String(str)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-/* ── INIT ───────────────────────────────────────────────────── */
+/* ── REASON METADATA ──────────────────────────────────────── */
+const REASON_META = {
+  "URL detected in email": { title: "URL Detected", desc: "One or more URLs were found in the email body." },
+  "Possible brand impersonation detected in URL": { title: "Brand Impersonation", desc: "A URL appears to impersonate a known brand domain." },
+  "Suspicious domain detected": { title: "Suspicious Domain", desc: "The link domain uses suspicious keywords or TLDs." },
+  "Sender identity and email domain do not match": { title: "Suspicious Sender", desc: "The sender name claims to be a brand but the email domain doesn't match." },
+  "Reply-To address differs from sender": { title: "Reply-To Mismatch", desc: "Replies will go to a different address — a classic phishing trick." },
+  "Return-Path differs from sender": { title: "Return-Path Mismatch", desc: "Bounces go to a different domain, suggesting the sender is spoofed." },
+  "Suspicious subject line detected": { title: "Urgent Subject Line", desc: "The subject uses alarming language to provoke immediate action." },
+  "Executable attachment detected": { title: "Dangerous Attachment", desc: "An attachment with an executable extension was found." },
+  "Double extension attachment detected": { title: "Double Extension", desc: "Attachment disguises its true type using a double extension." },
+  "Urgency tactic detected": { title: "Urgency Language", desc: "Uses urgent or threatening language to provoke immediate action." },
+  "Identity verification request detected": { title: "Verification Request", desc: "Asks you to verify your identity — a common phishing hook." },
+  "Account threat detected": { title: "Account Threat", desc: "Claims your account has been suspended or blocked." },
+  "Password reset request detected": { title: "Password Reset", desc: "Requests a password reset — verify through the official site directly." },
+  "Security scare tactic detected": { title: "Security Scare", desc: "Reports suspicious activity to create panic." },
+  "Suspicious link request detected": { title: "Click-Here Link", desc: "Uses 'click here' — a common phishing phrase." },
+  "Payment information request detected": { title: "Payment Request", desc: "Requests payment details or reports a failed payment." },
+  "Prize scam language detected": { title: "Prize Scam", desc: "Claims you've won something to lure you into clicking." },
+  "Address verification request detected": { title: "Address Request", desc: "Asks you to confirm your address — used for identity theft." },
+  "Multiple URLs detected": { title: "Multiple URLs", desc: "Contains many links, increasing the attack surface." },
+  "Raw IP address detected in URL": { title: "Raw IP URL", desc: "A URL uses a raw IP address instead of a domain — very suspicious." },
+};
+
+/* ── INIT ─────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  // Observe scroll sentinel
+  const sentinel = $('scrollSentinel');
+  if (sentinel) _sentinel.observe(sentinel);
+
+  // Close modals on backdrop click
+  ['guidelinesBackdrop', 'whyPhishyBackdrop'].forEach(id => {
+    const el = $(id);
+    if (el) el.addEventListener('click', e => { if (e.target === el) el.style.display = 'none'; });
+  });
+});
+
 renderEmailList();
-updateBadge();
-checkGmailStatus();  // check if already logged in (e.g. after OAuth redirect)
+updateBadges();
+setTimeout(checkGmailStatus, 500);

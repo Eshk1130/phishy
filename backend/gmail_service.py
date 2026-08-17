@@ -84,36 +84,35 @@ def credentials_from_dict(d):
 
 # ── Gmail API ───────────────────────────────────────────────────────────────
 
-def fetch_inbox(creds, max_results=20):
+def fetch_inbox(creds, max_results=100, page_token=None, label_id=None):
     """
     Fetch the latest `max_results` emails from the user's inbox.
-    Returns a list of raw MIME bytes (one per email).
+    Supports optional `page_token` for pagination and `label_id` for label filtering.
+    Returns a tuple (list_of_raw_emails, next_page_token). `next_page_token` may be None.
     """
     service = build("gmail", "v1", credentials=creds)
 
-    # List message IDs in INBOX
-    result = service.users().messages().list(
-        userId="me",
-        labelIds=["INBOX"],
-        maxResults=max_results,
-    ).execute()
+    # Build request params
+    params = {
+        "userId": "me",
+        "labelIds": [label_id if label_id else "INBOX"],
+        "maxResults": max_results,
+    }
+    if page_token:
+        params["pageToken"] = page_token
 
+    result = service.users().messages().list(**params).execute()
     messages = result.get("messages", [])
     raw_emails = []
-
     for msg in messages:
         msg_id = msg["id"]
-
-        # Fetch the raw RFC 2822 message
         raw = service.users().messages().get(
             userId="me",
             id=msg_id,
             format="raw",
         ).execute()
-
         raw_data = raw.get("raw", "")
-        # Gmail returns URL-safe base64 — decode to bytes
         email_bytes = base64.urlsafe_b64decode(raw_data + "==")
         raw_emails.append(email_bytes)
-
-    return raw_emails
+    next_token = result.get("nextPageToken")
+    return raw_emails, next_token

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Phishy — Email Threat Analyzer</title>
   <meta name="description" content="Phishy analyzes your emails for phishing threats with detailed risk reports."/>
@@ -11,152 +11,112 @@
 </head>
 <body>
 
-<!-- ════════════════════════════════════════════════════
-     APP SHELL
-════════════════════════════════════════════════════ -->
 <div class="app" id="app">
 
-  <!-- ── LEFT SIDEBAR ── -->
+  <!-- ════ SIDEBAR DASHBOARD ════ -->
   <aside class="sidebar" id="sidebar">
 
-    <!-- Logo -->
-    <div class="sidebar-logo">
-      <svg width="36" height="36" viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a73e8"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="18" font-weight="700" font-family="Google Sans">P</text></svg>
-      <span class="logo-text">hishy</span>
+    <div class="dash-brand">
+      <div class="brand-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+      </div>
+      <div>
+        <div class="brand-name"><span class="brand-phi">phi</span><span class="brand-shy">shy</span></div>
+        <div class="brand-sub">Email Threat Analyzer</div>
+      </div>
     </div>
 
-    <!-- Compose -->
-    <button class="compose-btn" id="composeBtn" onclick="triggerUpload()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-      Compose
-    </button>
-
-    <!-- Connect Gmail -->
-    <button class="connect-gmail-btn" id="connectGmailBtn" onclick="connectGmail()">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"/></svg>
-      <span id="gmailBtnText">Connect Gmail</span>
-    </button>
-
-    <!-- Hidden file input -->
-    <input type="file" id="emlUpload" accept=".eml" style="display:none" onchange="handleFileUpload(event)"/>
-
-    <!-- Nav -->
-    <nav class="sidebar-nav">
-      <a class="nav-item active" id="navInbox">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H4.99C3.89 3 3 3.9 3 5L3.01 19c0 1.1.89 2 1.99 2H19c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12h-4c0 1.66-1.35 3-3 3s-3-1.34-3-3H4.99V5H19v10z"/></svg>
-        Inbox
-        <span class="badge" id="inboxBadge">0</span>
-      </a>
-      <a class="nav-item">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-        Starred
-      </a>
-      <a class="nav-item">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M22 9V7h-2V5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-2h2v-2h-2v-2h2v-2h-2V9h2zm-4 10H4V5h14v14z"/><path d="M6 13h5v4H6zm7-6h3v3h-3zM6 7h5v5H6zm7 4h3v6h-3z"/></svg>
-        Snoozed
-      </a>
-      <a class="nav-item">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-        Sent
-      </a>
-      <a class="nav-item">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H4.99C3.89 3 3 3.9 3 5L3.01 19c0 1.1.89 2 1.99 2H19c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>
-        Drafts
-        <span class="badge badge-subtle">3</span>
-      </a>
-      <a class="nav-item">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-        Spam
-        <span class="badge badge-subtle">12</span>
-      </a>
-      <a class="nav-item">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-        Trash
-      </a>
-      <a class="nav-item">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
-        More
-      </a>
-    </nav>
-
-    <!-- Labels -->
-    <div class="sidebar-labels">
-      <div class="labels-header">
-        Labels
-        <svg class="labels-plus" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+    <!-- Stats Dashboard -->
+    <div class="dash-section">
+      <div class="dash-section-label">Analysis Overview</div>
+      <div class="dash-stats-grid">
+        <div class="stat-tile total">
+          <span class="stat-n" id="statTotal">0</span>
+          <span class="stat-l">Analyzed</span>
+        </div>
+        <div class="stat-tile high">
+          <span class="stat-n" id="statHigh">0</span>
+          <span class="stat-l">High Risk</span>
+        </div>
+        <div class="stat-tile medium">
+          <span class="stat-n" id="statMedium">0</span>
+          <span class="stat-l">Medium</span>
+        </div>
+        <div class="stat-tile low">
+          <span class="stat-n" id="statSafe">0</span>
+          <span class="stat-l">Safe</span>
+        </div>
       </div>
-      <a class="label-item"><span class="label-dot" style="background:#4caf50"></span>Personal</a>
-      <a class="label-item"><span class="label-dot" style="background:#2196f3"></span>Work</a>
-      <a class="label-item"><span class="label-dot" style="background:#ff9800"></span>Important</a>
-      <a class="label-item"><span class="label-dot" style="background:#9c27b0"></span>Travel</a>
-      <a class="label-item" style="opacity:.6">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
-        More
-      </a>
+      <!-- Risk bar -->
+      <div class="dash-risk-bar" id="dashRiskBar" style="display:none">
+        <div class="drb-seg high" id="drbHigh"></div>
+        <div class="drb-seg medium" id="drbMedium"></div>
+        <div class="drb-seg low" id="drbLow"></div>
+      </div>
+    </div>
+
+    <!-- Connect & Scan -->
+    <div class="dash-section">
+      <div class="dash-section-label">Connect & Scan</div>
+      <button class="dash-btn primary" id="connectGmailBtn" onclick="connectGmail()">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"/></svg>
+        <span id="gmailBtnText">Connect Gmail</span>
+      </button>
+      <label class="dash-btn secondary" for="emlUpload">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+        Upload .eml File
+      </label>
+      <input type="file" id="emlUpload" accept=".eml" style="display:none" onchange="handleFileUpload(event)"/>
+    </div>
+
+    <!-- Learn -->
+    <div class="dash-section">
+      <div class="dash-section-label">Learn</div>
+      <button class="dash-btn ghost" onclick="openWhyPhishy()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>
+        Why Phishy?
+      </button>
+      <button class="dash-btn ghost" onclick="openGuidelines()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+        Phishing Guidelines
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <div class="dash-footer">
+      <p class="dash-footer-text">Phishy detects phishing signals: domain spoofing, suspicious URLs, urgency tactics, credential harvesting, and malicious attachments.</p>
+      <p class="dash-footer-ver">v1.0 — Read-only. No emails are sent or modified.</p>
     </div>
 
   </aside>
 
-  <!-- ── MAIN AREA ── -->
+  <!-- ════ MAIN AREA ════ -->
   <div class="main-area">
 
-    <!-- ── EMAIL LIST PANEL ── -->
+    <!-- EMAIL LIST PANEL -->
     <div class="email-list-panel" id="emailListPanel">
 
-      <!-- Toolbar -->
-      <div class="list-toolbar">
-        <div class="toolbar-left">
-          <input type="checkbox" id="selectAll" class="checkbox"/>
-          <button class="toolbar-btn" title="Refresh" onclick="location.reload()">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-          </button>
-          <button class="toolbar-btn" title="More options">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
-          </button>
-        </div>
-        <div class="toolbar-right">
-          <!-- Upload drop zone -->
-          <label class="upload-chip" for="emlUpload" title="Upload .eml file">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
-            Upload .eml
-          </label>
-        </div>
-      </div>
-
-      <!-- Tabs -->
-      <div class="list-tabs">
-        <button class="tab active" id="tabPrimary">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"/></svg>
-          Primary
+      <!-- Inbox / Spam tabs -->
+      <div class="email-tabs">
+        <button class="etab active" id="tabInbox" onclick="switchTab('inbox')">
+          Inbox <span class="tab-count" id="inboxBadge">0</span>
         </button>
-        <button class="tab" id="tabPromotions">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-          Promotions
-          <span class="tab-badge">9 new</span>
-        </button>
-        <button class="tab" id="tabSocial">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-          Social
+        <button class="etab" id="tabSpam" onclick="switchTab('spam')">
+          Spam <span class="tab-count" id="spamBadge">0</span>
         </button>
       </div>
 
       <!-- Email rows -->
       <div class="email-rows" id="emailRows">
 
-        <!-- Empty state shown when no emails uploaded -->
         <div class="empty-state" id="emptyState">
           <div class="empty-icon">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"/></svg>
           </div>
           <p class="empty-title">No emails yet</p>
-          <p class="empty-sub">Upload a <strong>.eml</strong> file using the button above<br/>to analyze it for phishing threats.</p>
-          <label class="empty-upload-btn" for="emlUpload">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
-            Upload .eml File
-          </label>
+          <p class="empty-sub">Connect your Gmail account or upload a <strong>.eml</strong> file from the sidebar to begin threat analysis.</p>
         </div>
 
-        <!-- Drag-drop overlay -->
         <div class="drop-overlay" id="dropOverlay">
           <div class="drop-content">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
@@ -164,44 +124,32 @@
           </div>
         </div>
 
-      </div>
-    </div>
+      </div><!-- /#emailRows -->
 
-    <!-- ── EMAIL VIEWER ── -->
+      <div id="scrollSentinel" style="height:1px"></div>
+
+    </div><!-- /.email-list-panel -->
+
+    <!-- EMAIL VIEWER -->
     <div class="email-viewer" id="emailViewer">
 
-      <!-- Viewer toolbar -->
       <div class="viewer-toolbar">
-        <button class="viewer-btn" id="backBtn" onclick="closeViewer()" title="Back to inbox">
+        <button class="viewer-btn" onclick="closeViewer()" title="Back">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         </button>
-        <button class="viewer-btn" title="Archive">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg>
-        </button>
-        <button class="viewer-btn" title="Delete">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-        </button>
-        <button class="viewer-btn" title="Mark as spam">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-        </button>
         <div class="viewer-spacer"></div>
-        <span class="viewer-count" id="viewerCount">1 of 1</span>
-        <button class="viewer-btn" title="Previous">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
-        </button>
-        <button class="viewer-btn" title="Next">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+        <span class="viewer-count" id="viewerCount"></span>
+        <!-- Reopen analysis panel button (shown when panel is dismissed) -->
+        <button class="viewer-btn reopen-panel-btn" id="reopenPanelBtn" onclick="openPanel()" title="Show analysis" style="display:none">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.11 0 2-.89 2-2V5c0-1.11-.89-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z"/></svg>
         </button>
       </div>
 
-      <!-- Subject row -->
       <div class="viewer-subject-row">
         <h1 class="viewer-subject" id="viewerSubject">—</h1>
         <span class="risk-badge-large" id="viewerRiskBadge"></span>
-        <span class="inbox-chip">Inbox ×</span>
       </div>
 
-      <!-- Sender row -->
       <div class="viewer-sender-row">
         <div class="sender-avatar" id="senderAvatar">?</div>
         <div class="sender-meta">
@@ -211,62 +159,36 @@
         </div>
         <div class="viewer-meta-right">
           <span class="viewer-time" id="viewerTime">—</span>
-          <button class="viewer-btn" title="Star">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></svg>
-          </button>
-          <button class="viewer-btn" title="Reply">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg>
-          </button>
-          <button class="viewer-btn" title="More">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
-          </button>
         </div>
       </div>
 
-      <!-- Warning banner -->
       <div class="warning-banner" id="warningBanner" style="display:none">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
-        <span id="warningText">This email has been flagged as potentially dangerous. Be careful with links and attachments.</span>
+        <span id="warningText">This email has been flagged as potentially dangerous.</span>
         <button class="why-btn" onclick="scrollToPanel()">Why this?</button>
       </div>
 
-      <!-- Body -->
       <div class="viewer-body" id="viewerBody">
-        <p style="color:#9aa0a6;text-align:center;margin-top:60px">Select an email from the list to view it here.</p>
+        <p style="color:#9aa0a6;text-align:center;margin-top:60px">Select an email to view it here.</p>
       </div>
 
-      <!-- Reply bar -->
-      <div class="reply-bar" id="replyBar" style="display:none">
-        <button class="reply-action-btn" id="replyBtn">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg>
-          Reply
-        </button>
-        <button class="reply-action-btn" id="forwardBtn">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 8V4l8 8-8 8v-4H4V8z"/></svg>
-          Forward
-        </button>
-      </div>
+    </div><!-- /.email-viewer -->
 
-    </div>
-
-    <!-- ── PHISHY PANEL ── -->
+    <!-- PHISHY ANALYSIS PANEL -->
     <div class="phishy-panel" id="phishyPanel">
 
       <div class="panel-header">
         <div class="panel-brand">
-          <svg width="24" height="24" viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a73e8"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="20" font-weight="700" font-family="Google Sans">P</text></svg>
-          <span>Phishy</span>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#1a73e8"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+          <span>Threat Report</span>
         </div>
-        <button class="panel-close" onclick="closeViewer()" title="Close">
+        <button class="panel-close" onclick="closePanel()" title="Dismiss panel">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
       </div>
 
       <div class="panel-body" id="panelBody">
 
-        <h3 class="panel-section-title">Threat Report</h3>
-
-        <!-- Risk card -->
         <div class="risk-card" id="riskCard">
           <div class="risk-card-header">
             <div class="risk-shield" id="riskShield">
@@ -282,36 +204,112 @@
           </div>
         </div>
 
-        <!-- Why risky -->
-        <h4 class="panel-sub-title">Why this email is risky:</h4>
+        <h4 class="panel-sub-title">Detection signals:</h4>
         <div class="reason-list" id="reasonList">
           <p class="panel-placeholder">No email selected.</p>
         </div>
 
-        <!-- Recommendations -->
         <div class="recommendations" id="recommendations" style="display:none">
-          <h4 class="panel-sub-title">Recommendations:</h4>
+          <h4 class="panel-sub-title">What to do:</h4>
           <ul class="rec-list" id="recList"></ul>
         </div>
 
-        <!-- Report button -->
         <button class="report-phishing-btn" id="reportBtn" style="display:none" onclick="reportPhishing()">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
-          Report Phishing
+          Report as Phishing
         </button>
 
       </div>
-    </div>
+    </div><!-- /.phishy-panel -->
 
   </div><!-- /.main-area -->
 </div><!-- /#app -->
 
-<!-- Toast notification -->
 <div class="toast" id="toast"></div>
-
-<!-- Upload progress -->
 <div class="upload-progress" id="uploadProgress" style="display:none">
   <div class="progress-bar" id="progressBar"></div>
+</div>
+
+<!-- WHY PHISHY MODAL -->
+<div id="whyPhishyBackdrop" class="modal-backdrop" style="display:none">
+  <div class="modal-box" style="max-width:500px">
+    <div class="modal-header">
+      <h3 class="modal-title">Why Phishy?</h3>
+      <button onclick="closeWhyPhishy()" class="modal-close">&#x2715;</button>
+    </div>
+    <p class="modal-intro">Phishing is the #1 vector for data breaches globally. Most people can't tell a well-crafted phishing email from a legitimate one — and attackers know it.</p>
+    <div class="why-block">
+      <div class="why-num">3.4B</div>
+      <div class="why-desc">phishing emails are sent every day worldwide. One click can compromise an entire organization.</div>
+    </div>
+    <div class="why-block">
+      <div class="why-num">83%</div>
+      <div class="why-desc">of organizations experienced a phishing attack in 2023. Standard spam filters miss sophisticated attempts.</div>
+    </div>
+    <div class="why-block">
+      <div class="why-num">Real-time</div>
+      <div class="why-desc">Phishy scans your inbox the moment you connect — analyzing sender authenticity, URL patterns, and social engineering tactics instantly.</div>
+    </div>
+    <p style="font-size:13px;color:#9aa0a6;margin-top:18px;line-height:1.6">Phishy is a read-only threat analysis tool. It does not store, send, or modify your emails. Your Gmail credentials stay on your device via OAuth2.</p>
+    <button onclick="closeWhyPhishy()" class="modal-ok-btn">Got it</button>
+  </div>
+</div>
+
+<!-- PHISHING GUIDELINES MODAL -->
+<div id="guidelinesBackdrop" class="modal-backdrop" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 class="modal-title">Phishing Guidelines</h3>
+      <button onclick="closeGuidelines()" class="modal-close">&#x2715;</button>
+    </div>
+    <p class="modal-intro">Know the signs. Phishy scans automatically, but awareness is your first line of defense.</p>
+
+    <div class="guide-section">
+      <div class="guide-icon" style="background:rgba(234,67,53,.15)"><svg viewBox="0 0 24 24" fill="#f28b82"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg></div>
+      <div>
+        <div class="guide-title">Suspicious Links</div>
+        <p class="guide-desc">Hover before clicking. If the URL uses a raw IP or a look-alike domain (e.g. <code>paypa1.com</code>), don't click.</p>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-icon" style="background:rgba(251,188,4,.12)"><svg viewBox="0 0 24 24" fill="#fdd663"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"/></svg></div>
+      <div>
+        <div class="guide-title">Sender Spoofing</div>
+        <p class="guide-desc">Check the actual email domain, not just the display name. "Google Support" can be sent from <code>scam@random.ru</code>.</p>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-icon" style="background:rgba(52,168,83,.12)"><svg viewBox="0 0 24 24" fill="#81c995"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg></div>
+      <div>
+        <div class="guide-title">Urgency Tactics</div>
+        <p class="guide-desc">"Account suspended in 24 hours" is a pressure tactic. Legitimate companies don't rush you into clicking links.</p>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-icon" style="background:rgba(26,115,232,.12)"><svg viewBox="0 0 24 24" fill="#8ab4f8"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></div>
+      <div>
+        <div class="guide-title">Credential Requests</div>
+        <p class="guide-desc">No legitimate service asks for your password by email. Go directly to the website — never through an email link.</p>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-icon" style="background:rgba(156,39,176,.12)"><svg viewBox="0 0 24 24" fill="#ce93d8"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></div>
+      <div>
+        <div class="guide-title">Dangerous Attachments</div>
+        <p class="guide-desc">Never open <code>.exe</code>, <code>.bat</code>, <code>.scr</code>, or double-extension files like <code>invoice.pdf.exe</code>.</p>
+      </div>
+    </div>
+
+    <div class="guide-tip">
+      <strong>Pro Tip:</strong> Phishy scores emails 0–100. Any score above 50 warrants caution. High-risk emails should never be opened without verifying the sender through a separate channel.
+    </div>
+
+    <button onclick="closeGuidelines()" class="modal-ok-btn">Got it</button>
+  </div>
 </div>
 
 <script src="/static/js/app.js"></script>
