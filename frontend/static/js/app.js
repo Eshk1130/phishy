@@ -1,14 +1,14 @@
 /* ── STATE ────────────────────────────────────────────────── */
 let inboxEmails = [];
-let spamEmails = [];
-let activeId = null;
-let currentTab = 'inbox';
+let spamEmails  = [];   // kept for badge only — not rendered
+let activeId    = null;
+let currentTab  = 'inbox';
 let inboxNextPage = null;
-let spamNextPage = null;
-let _scrollFetch = false;
+let spamNextPage  = null;
+let _scrollFetch  = false;
 
-function getEmails() { return currentTab === 'inbox' ? inboxEmails : spamEmails; }
-function getNextPage() { return currentTab === 'inbox' ? inboxNextPage : spamNextPage; }
+function getEmails()   { return inboxEmails; }
+function getNextPage() { return inboxNextPage; }
 
 /* ── GMAIL AUTH ───────────────────────────────────────────── */
 async function connectGmail() {
@@ -37,10 +37,9 @@ async function checkGmailStatus() {
       const btn = $('connectGmailBtn');
       btn.classList.add('connected');
       $('gmailBtnText').textContent = 'Gmail Connected';
-      // Load inbox and spam concurrently so both tabs are ready
+      // Inbox only — no spam tab
       if (inboxEmails.length === 0) {
         loadGmailInbox();
-        loadGmailSpam(); // background-load spam too
       }
     }
   } catch (_) { }
@@ -59,8 +58,8 @@ async function loadGmailInbox(pageToken = null) {
     if (!resp.ok) { const e = await resp.json(); showToast(e.error || 'Failed'); setProgress(null); return; }
     const data = await resp.json();
     inboxNextPage = data.next_page_token || null;
-    (data.messages || []).forEach(e => { e.time = formatTime(); inboxEmails.unshift(e); });
-    if (currentTab === 'inbox') renderEmailList();
+    (data.messages || []).forEach(e => { e.time = formatTime(); inboxEmails.push(e); });
+    renderEmailList();
     updateBadges(); updateDashStats();
     setProgress(null);
     showToast('Loaded ' + (data.messages || []).length + ' inbox emails');
@@ -96,24 +95,12 @@ async function loadGmailSpam(pageToken = null) {
   }
 }
 
-/* ── TAB SWITCHING ────────────────────────────────────────── */
-function switchTab(tab) {
-  currentTab = tab;
-  $('tabInbox').classList.toggle('active', tab === 'inbox');
-  $('tabSpam').classList.toggle('active', tab === 'spam');
-  activeId = null;
-  renderEmailList();
-  if (tab === 'spam' && spamEmails.length === 0) {
-    loadGmailSpam();
-  }
-}
 
 /* ── INFINITE SCROLL ──────────────────────────────────────── */
 const _sentinel = new IntersectionObserver(entries => {
   if (entries[0].isIntersecting && getNextPage() && !_scrollFetch) {
     _scrollFetch = true;
-    const loader = currentTab === 'inbox' ? loadGmailInbox : loadGmailSpam;
-    loader(getNextPage()).finally(() => { _scrollFetch = false; });
+    loadGmailInbox(getNextPage()).finally(() => { _scrollFetch = false; });
   }
 }, { threshold: 0.5 });
 
@@ -125,7 +112,7 @@ function closeWhyPhishy() { $('whyPhishyBackdrop').style.display = 'none'; }
 
 /* ── DASHBOARD STATS ──────────────────────────────────────── */
 function updateDashStats() {
-  const all = [...inboxEmails, ...spamEmails];
+  const all = [...inboxEmails];
   const total = all.length;
   const high = all.filter(e => e.risk_level === 'High').length;
   const medium = all.filter(e => e.risk_level === 'Medium').length;
@@ -148,7 +135,6 @@ function updateDashStats() {
 
 function updateBadges() {
   $('inboxBadge').textContent = inboxEmails.length;
-  $('spamBadge').textContent = spamEmails.length;
 }
 
 /* ── STRIP HTML ───────────────────────────────────────────── */
@@ -209,7 +195,7 @@ async function uploadFile(file) {
     email.time = formatTime();
     email.filename = file.name;
     inboxEmails.unshift(email);
-    if (currentTab === 'inbox') renderEmailList();
+    renderEmailList();
     updateBadges(); updateDashStats();
     openEmail(email.id);
     showToast('Analysis complete — ' + email.risk_level + ' Risk');
@@ -232,22 +218,18 @@ document.addEventListener('drop', e => {
 
 /* ── RENDER EMAIL LIST ────────────────────────────────────── */
 function renderEmailList() {
-  const container = $('emailRows');
-  const empty = $('emptyState');
-  const dropZone = $('dropOverlay');
-  const emails = getEmails();
+  const list   = $('emailRowsList');   // JS-owned container — safe to clear
+  const empty  = $('emptyState');
+  const emails = inboxEmails;
+
+  // Wipe the list cleanly — no shared nodes live here
+  list.innerHTML = '';
 
   if (emails.length === 0) {
     empty.style.display = 'flex';
-    container.innerHTML = '';
-    container.appendChild(empty);
-    container.appendChild(dropZone);
     return;
   }
-
   empty.style.display = 'none';
-  container.innerHTML = '';
-  container.appendChild(dropZone);
 
   emails.forEach(email => {
     const div = document.createElement('div');
@@ -262,17 +244,34 @@ function renderEmailList() {
         <div class="row-snippet">${escHtml(email.snippet || '')}</div>
       </div>
       <div class="row-time">${email.time || ''}</div>`;
-    container.appendChild(div);
+    list.appendChild(div);
   });
 
-  // Re-attach sentinel inside scrolling container
-  const sentinel = $('scrollSentinel');
-  if (sentinel) container.appendChild(sentinel);
+  // Load-more button
+  if (inboxNextPage) {
+    const btn = document.createElement('button');
+    btn.className = 'load-more-btn';
+    btn.id = 'loadMoreBtn';
+    btn.innerHTML = `
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+      Load next 100 emails`;
+    btn.onclick = () => loadMoreInbox(btn);
+    list.appendChild(btn);
+  }
+}
+
+
+
+function loadMoreInbox(btn) {
+  if (!inboxNextPage) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Loading...'; }
+  loadGmailInbox(inboxNextPage);
 }
 
 /* ── OPEN EMAIL ───────────────────────────────────────────── */
 async function openEmail(id) {
   activeId = id;
+  $('app').classList.add('email-open'); // mobile: switch to viewer panel
   document.querySelectorAll('.email-row').forEach(r => r.classList.remove('selected'));
   const row = $('row-' + id);
   if (row) row.classList.add('selected');
@@ -373,6 +372,8 @@ function getRecommendations(level) {
 
 function closeViewer() {
   activeId = null;
+  // Mobile: navigate back to email list
+  $('app').classList.remove('email-open');
   document.querySelectorAll('.email-row').forEach(r => r.classList.remove('selected'));
   $('viewerSubject').textContent = '\u2014';
   $('viewerBody').innerHTML = '<p style="color:#9aa0a6;text-align:center;margin-top:60px">Select an email to view it here.</p>';
@@ -394,10 +395,21 @@ function closeViewer() {
   rb.style.background = '';
   rb.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg> Report as Phishing';
   $('viewerCount').textContent = '';
-  // Restore the analysis panel if it was dismissed
   $('phishyPanel').style.display = '';
   const reopen = $('reopenPanelBtn');
   if (reopen) reopen.style.display = 'none';
+}
+
+/* ── MOBILE SIDEBAR TOGGLE ────────────────────────────────── */
+function toggleSidebar() {
+  const sidebar  = $('sidebar');
+  const overlay  = $('sidebarOverlay');
+  const isOpen   = sidebar.classList.toggle('open');
+  overlay.classList.toggle('show', isOpen);
+}
+function closeSidebar() {
+  $('sidebar').classList.remove('open');
+  $('sidebarOverlay').classList.remove('show');
 }
 
 /* ── PANEL-ONLY CLOSE (keeps email body visible) ─────────── */
