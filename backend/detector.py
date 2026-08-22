@@ -12,6 +12,23 @@ def analyze_email(
     print("ATTACHMENTS RECEIVED:", attachments)
 
     # the dictionary containing scores and reasons
+    #
+    # Weights are grouped into four evenly-spaced severity tiers (1/2/3/4)
+    # instead of the previous ad hoc 0-5 spread, so a couple of mid-severity
+    # keyword hits can't stack into Medium/High as fast as they could when
+    # several unrelated indicators all happened to sit at the same weight
+    # (e.g. 3 or 5) for no consistent reason.
+    #
+    # Tier 1 (weight 1) - weak/contextual signals, common in legitimate mail
+    # Tier 2 (weight 2) - moderate social-engineering language
+    # Tier 3 (weight 3) - high-risk requests (credentials, fees, brand-linked)
+    # Tier 4 (weight 4) - critical/severe signals (direct credential/OTP theft,
+    #                     confirmed domain or brand spoofing)
+    #
+    # url_detection and multiple_urls stay at weight 0: they are informational
+    # flags only (having a URL, or several, isn't itself suspicious) and were
+    # never meant to score on their own in the original design - only the
+    # raw-IP and suspicious-domain checks that inspect those URLs carry weight.
     indicators = {
         "urgency": {
             "keywords": [
@@ -24,17 +41,16 @@ def analyze_email(
         },
 
         "verification": {
-            "keywords": [
-                "verify",
-                "verify your identity",
-                "verify your account",
-                "confirm your identity",
-                "confirm your account",
-                "login"
-            ],
-            "weight": 3,
-            "reason": "Identity verification request detected"
-        },
+    "keywords": [
+        "verify",
+        "verify your identity",
+        "verify your account",
+        "confirm your identity",
+        "confirm your account"
+    ],
+    "weight": 3,
+    "reason": "Identity verification request detected"
+},
 
         "account_threat": {
             "keywords": [
@@ -63,13 +79,14 @@ def analyze_email(
         },
 
         "link_request": {
-            "keywords": [
-                "click here"
-            ],
-            "weight": 2,
-            "reason": "Suspicious link request detected"
-        },
-
+    "keywords": [
+        "click here",
+        "click the link below",
+        "follow this link"
+    ],
+    "weight": 1,
+    "reason": "Suspicious link request detected"
+},
         "payment": {
             "keywords": [
                 "update payment",
@@ -94,54 +111,169 @@ def analyze_email(
             "weight": 2,
             "reason": "Address verification request detected"
         },
-        "url_detection": {
-            "keywords": [],
-            "weight": 2,
-            "reason": "URL detected in email"
+
+        # --- Job / internship scam detection ---
+        "job_scam": {
+            "keywords": [
+                "no interview required",
+                "guaranteed selection",
+                "selected without applying",
+                "instant joining",
+                "earn money from home",
+                "work only 2 hours a day",
+                "processing fee",
+                "registration fee",
+                "security deposit",
+                "pay to apply",
+                "limited seats",
+                "immediate joining",
+                "100% placement guarantee",
+                "training fee",
+                "deposit before joining",
+                "mandatory paid training"
+            ],
+            "weight": 3,
+            "reason": "Potential job or internship scam detected"
         },
+
+        # --- UPI payment request detection ---
+        "upi_request": {
+            "keywords": [
+                "@paytm",
+                "@ybl",
+                "@ibl",
+                "@axl",
+                "@oksbi",
+                "@okhdfcbank",
+                "@okicici"
+            ],
+            "weight": 3,
+            "reason": "UPI payment request detected"
+        },
+
+        # --- QR code payment detection ---
+        "qr_payment": {
+            "keywords": [
+                "scan qr",
+                "scan the qr",
+                "qr code payment",
+                "pay via qr"
+            ],
+            "weight": 2,
+            "reason": "QR code payment request detected"
+        },
+
+        # --- Gift card scam detection ---
+        "gift_card": {
+            "keywords": [
+                "amazon gift card",
+                "google play card",
+                "steam gift card",
+                "itunes gift card"
+            ],
+            "weight": 3,
+            "reason": "Gift card payment request detected"
+        },
+
+        # --- Crypto payment detection ---
+        "crypto_payment": {
+            "keywords": [
+                "bitcoin",
+                "btc",
+                "ethereum",
+                "eth wallet",
+                "crypto transfer"
+            ],
+            "weight": 3,
+            "reason": "Cryptocurrency payment request detected"
+        },
+
+        # --- OTP harvesting detection ---
+        "otp_request": {
+            "keywords": [
+                "share your otp",
+                "provide otp",
+                "send otp",
+                "tell us your otp"
+            ],
+            "weight": 4,
+            "reason": "OTP harvesting attempt detected"
+        },
+
+        # --- Banking credential theft detection ---
+        "banking_credentials": {
+            "keywords": [
+                "cvv",
+                "debit card number",
+                "credit card number",
+                "bank account number",
+                "internet banking password"
+            ],
+            "weight": 4,
+            "reason": "Banking credential request detected"
+        },
+
+        # --- Aadhaar / PAN theft detection ---
+        "identity_documents": {
+            "keywords": [
+                "aadhaar card",
+                "aadhaar number",
+                "pan card",
+                "upload your pan",
+                "upload your aadhaar"
+            ],
+            "weight": 3,
+            "reason": "Sensitive identity document request detected"
+        },
+
+        "url_detection": {
+    "keywords": [],
+    "weight": 0,
+    "reason": "URL detected in email"
+},
         "raw_ip_url": {
             "keywords": [],
-            "weight": 3,
+            "weight": 4,
             "reason": "Raw IP address detected in URL"
         },
-        "multiple_urls": {
-            "keywords": [],
-            "weight": 2,
-            "reason": "Multiple URLs detected"
-        },
+       "multiple_urls": {
+    "keywords": [],
+    "weight": 0,
+    "reason": "Multiple URLs detected"
+},
         "suspicious_domain": {
             "keywords": [],
-            "weight": 3,
+            "weight": 4,
             "reason": "Suspicious domain detected"
         },
         "sender_mismatch": {
           "keywords": [],
-          "weight": 3,
+          "weight": 2,
           "reason": "Sender identity and email domain do not match"
         },
         "executable_attachment": {
          "keywords": [],
-         "weight": 3,
+         "weight": 2,
          "reason": "Executable attachment detected"
         },
         "double_extension_attachment": {
           "keywords": [],
-          "weight": 3,
+          "weight": 2,
     "reason": "Double extension attachment detected"
 },
 "brand_impersonation": {
     "keywords": [],
-    "weight": 3,
+    "weight": 4,
     "reason": "Possible brand impersonation detected in URL"
 },
 "reply_to_mismatch": {
     "keywords": [],
-    "weight": 3,
+    "weight": 1,
     "reason": "Reply-To address differs from sender"
 },
 "return_path_mismatch": {
     "keywords": [],
-    "weight": 3,
+    "weight": 1,
     "reason": "Return-Path differs from sender"
 },
 "subject_threat": {
@@ -149,6 +281,8 @@ def analyze_email(
     "weight": 2,
     "reason": "Suspicious subject line detected"
 },
+
+
     }
 
 # list 1 for suspicious tlds
@@ -204,8 +338,7 @@ def analyze_email(
     "reset",
     "action required",
     "security alert",
-    "password",
-    "account"
+    "password"
 ]
 
     # vars
@@ -356,26 +489,43 @@ def analyze_email(
                 reasons.append(indicator["reason"])
                 break
 
-    # calculating max score dynamically
+   # calculating max score dynamically
     for indicator in indicators.values():
         max_score += indicator["weight"]
 
-    # avoid division by zero
-    risk_percentage = (score / max_score) * 100 if max_score else 0
+# keep percentage for display
+    # NOTE: this was hardcoded to /15 from an earlier, smaller version of the
+    # indicator set. Now that there are many more indicators (and weights as
+    # high as 5), that denominator badly under-represents max_score and can
+    # push risk_percentage to 100% on a single mid-weight hit. Using the
+    # dynamically computed max_score keeps this proportional as indicators
+    # are added/removed/reweighted in the future.
+    risk_percentage = min((score / max_score) * 100, 100) if max_score else 0
 
-    # for determining risk level- high med low, if block
-    if risk_percentage < 30:
+    # confidence: how sure the model is that this is a scam, based on how
+    # many independent signals fired, not just their combined weight. This
+    # is deliberately a simple heuristic for display purposes only, not a
+    # statistically calibrated probability.
+    confidence = min(score * 10, 100)
+
+# determine risk level using raw score
+    if score < 5:
         risk_level = "Low"
-    elif risk_percentage < 70:
+    elif score < 10:
         risk_level = "Medium"
     else:
         risk_level = "High"
-
+    print("SCORE:", score)
+    print("REASONS:", reasons)
+    print("RISK %:", risk_percentage)
+    print("RISK LEVEL:", risk_level)
+    print("CONFIDENCE:", confidence)
     # returning the final result as a dictionary    
     return {
         "score": score,
         "reasons": reasons,
         "max_score": max_score,
         "risk_percentage": risk_percentage,
-        "risk_level": risk_level
+        "risk_level": risk_level,
+        "confidence": confidence
     }
